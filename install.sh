@@ -58,7 +58,9 @@ place() {
 	mkdir -p "$BIN_DIR"
 	cp "$work/kido-agent" "$BIN.new"
 	# ブラウザで落とした tar.gz から取り出すと隔離の印が付き、起動が止められるので外す
-	[ "$os" = darwin ] && xattr -d com.apple.quarantine "$BIN.new" 2>/dev/null || true
+	if [ "$os" = darwin ]; then
+		xattr -d com.apple.quarantine "$BIN.new" 2>/dev/null || true
+	fi
 	mv -f "$BIN.new" "$BIN"
 }
 
@@ -170,7 +172,7 @@ main() {
 	say "入れました($("$BIN" version)): $BIN"
 	[ "$os" = darwin ] && say "「受け入れる接続を許可しますか」と聞かれたら「許可」を押してください。"
 	"autostart_$os"
-	wait_agent || die "常駐アプリが起動しませんでした。ログ: ~/.config/kido-agent/kido-agent.log"
+	wait_agent || die "常駐アプリが起動しませんでした。ログ: $HOME/.config/kido-agent/kido-agent.log"
 	[ "$os" = darwin ] && sudoers_darwin
 	say ""
 	# 更新で入れ直したときは組み直さない(pair は古い鍵を消してしまう)。

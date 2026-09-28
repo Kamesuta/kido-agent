@@ -41,7 +41,7 @@ def hello():
 
 
 def pair():
-    deadline = time.time() + 300
+    deadline = time.time() + 120
     while time.time() < deadline:
         try:
             if hello()["state"] == "pairing":

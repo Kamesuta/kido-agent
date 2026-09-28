@@ -30,5 +30,5 @@ python3 ci/hub_stub.py list || fail "入れ直しで鍵が消えた"
 sleep 2
 [ ! -e "$bin" ] || fail "実行ファイルが残っている"
 curl -fsS -m 2 http://127.0.0.1:47821/v1/hello && fail "常駐アプリが止まっていない"
-[ -d "$HOME/Kido" ] || fail "~/Kido は残すはず"
+[ -d "$HOME/Kido" ] || fail "操作フォルダは残すはず"
 echo "✓ 通し試験に通りました"
