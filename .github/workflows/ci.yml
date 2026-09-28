@@ -64,8 +64,6 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
-    # GitHub の Linux の実行環境には利用者の systemd が無いことがあるので、落ちても止めない
-    continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6

@@ -26,7 +26,7 @@ $ProgressPreference = 'SilentlyContinue' # 5.1 は進み具合の表示のせい
 
 $Dest = Join-Path $env:LOCALAPPDATA 'Programs\kido-agent'
 $Kido = Join-Path $env:USERPROFILE 'Kido'
-$UninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\KidoAgent'
+$UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\KidoAgent'
 
 function Get-Arch {
     if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64' -or $env:PROCESSOR_ARCHITEW6432 -eq 'ARM64') { return 'arm64' }
@@ -70,36 +70,42 @@ function Stop-Agent {
     Start-Sleep -Milliseconds 300
 }
 
+# Open-UserKey は HKCU のキーを開く。無ければ途中の階層ごと作る(新しい利用者には
+# Run すら無いことがある)。New-Item -Force は既存のキーの値を消してしまうので使わない。
+function Open-UserKey([string]$Path) {
+    return [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($Path)
+}
+
 # Add-UserPath は kido-agent を、新しく開く PowerShell からも名前だけで呼べるようにする。
 # [Environment]::SetEnvironmentVariable で書くと %USERPROFILE% などが展開されない形に
-# 変わって他のパスが壊れるので、レジストリの種類を保ったまま書き足す。
+# 変わって他のパスが壊れるので、展開前の値に書き足して REG_EXPAND_SZ で書く。
 function Add-UserPath {
-    $key = Get-Item 'HKCU:\Environment'
-    $raw = $key.GetValue('Path', '', 'DoNotExpandEnvironmentNames')
-    if (($raw -split ';') -contains $Dest) { return }
-    $new = if ($raw) { "$raw;$Dest" } else { $Dest }
-    New-ItemProperty -Path 'HKCU:\Environment' -Name 'Path' -Value $new -PropertyType ExpandString -Force | Out-Null
-    # 変わったことを開いているエクスプローラーに知らせる(空の変数を書いて消すと通知が飛ぶ)
+    $key = Open-UserKey 'Environment'
+    try {
+        $raw = [string]$key.GetValue('Path', '', 'DoNotExpandEnvironmentNames')
+        if (($raw -split ';') -contains $Dest) { return }
+        $new = if ($raw) { "$raw;$Dest" } else { $Dest }
+        $key.SetValue('Path', $new, 'ExpandString')
+    } finally { $key.Close() }
+    # 変わったことを開いているエクスプローラーに知らせる(変数を書いて消すと通知が飛ぶ)
     [Environment]::SetEnvironmentVariable('KIDO_AGENT_PATH_REFRESH', '1', 'User')
     [Environment]::SetEnvironmentVariable('KIDO_AGENT_PATH_REFRESH', $null, 'User')
 }
 
 function Register-Agent([string]$Version) {
-    $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-    Set-ItemProperty -Path $run -Name 'KidoAgent' -Value "`"$Dest\kido-agentd.exe`""
-    New-Item -Path $UninstallKey -Force | Out-Null
-    $values = @{
-        DisplayName     = '起動丸エージェント'
-        DisplayVersion  = $Version
-        DisplayIcon     = "$Dest\kido-agentd.exe"
-        Publisher       = 'Kido'
-        InstallLocation = $Dest
-        UninstallString = "`"$Dest\kido-agent.exe`" uninstall"
-    }
-    foreach ($k in $values.Keys) { Set-ItemProperty -Path $UninstallKey -Name $k -Value $values[$k] }
-    foreach ($k in 'NoModify', 'NoRepair') {
-        New-ItemProperty -Path $UninstallKey -Name $k -Value 1 -PropertyType DWord -Force | Out-Null
-    }
+    $run = Open-UserKey 'Software\Microsoft\Windows\CurrentVersion\Run'
+    $run.SetValue('KidoAgent', "`"$Dest\kido-agentd.exe`"")
+    $run.Close()
+    $un = Open-UserKey $UninstallKey
+    $un.SetValue('DisplayName', '起動丸エージェント')
+    $un.SetValue('DisplayVersion', $Version)
+    $un.SetValue('DisplayIcon', "$Dest\kido-agentd.exe")
+    $un.SetValue('Publisher', 'Kido')
+    $un.SetValue('InstallLocation', $Dest)
+    $un.SetValue('UninstallString', "`"$Dest\kido-agent.exe`" uninstall")
+    $un.SetValue('NoModify', 1, 'DWord')
+    $un.SetValue('NoRepair', 1, 'DWord')
+    $un.Close()
     Add-UserPath
 }
 
