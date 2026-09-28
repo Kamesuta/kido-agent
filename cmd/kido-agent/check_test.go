@@ -13,16 +13,16 @@ import (
 
 func TestCheckActionsOutput(t *testing.T) {
 	root := t.TempDir()
-	mkAction(t, root, "00_sleep", "sleep.ps1")
-	mkAction(t, root, "10_two", "a.bat", "b.bat")
-	d := mkAction(t, root, "20_warn", "a.bat")
+	mkAction(t, root, "10_sleep", "sleep.ps1")
+	mkAction(t, root, "50_two", "a.bat", "b.bat")
+	d := mkAction(t, root, "60_warn", "a.bat")
 	writeFile(t, d+"/kido.toml", "icon = \"BAD\"\n")
 	var out bytes.Buffer
 	if bad := checkActions(&out, root, "windows"); !bad {
 		t.Fatal("壊れた操作があれば true")
 	}
 	s := out.String()
-	for _, want := range []string{"✓ 00_sleep", "✗ 10_two", `run = "a.bat"`, "! 20_warn", "lucide"} {
+	for _, want := range []string{"✓ 10_sleep", "✗ 50_two", `run = "a.bat"`, "! 60_warn", "lucide"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("%q が無い:\n%s", want, s)
 		}

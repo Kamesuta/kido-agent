@@ -87,14 +87,14 @@ func TestPairEndpoint(t *testing.T) {
 
 func TestListSigned(t *testing.T) {
 	ta := pairedAgent(t)
-	mkAction(t, ta.actionsDir, "00_sleep", "sleep.ps1")
-	mkAction(t, ta.actionsDir, "40_Game", "a.bat", "b.bat")
+	mkAction(t, ta.actionsDir, "10_sleep", "sleep.ps1")
+	mkAction(t, ta.actionsDir, "50_Game", "a.bat", "b.bat")
 	_, n := ta.hello(t)
 	res := call(t, ta.apiHandler(), "POST", "/v1/list", listReq(n, auth.Sign(testKey, "list", n)))
 	if res.status != 200 {
 		t.Fatalf("%+v", res)
 	}
-	want := `{"actions":[{"id":"00_sleep","name":"sleep"},{"id":"40_Game","name":"Game","broken":true}]}`
+	want := `{"actions":[{"id":"10_sleep","name":"sleep"},{"id":"50_Game","name":"Game","broken":true}]}`
 	if res.body != want {
 		t.Fatalf("本文:\n%s", res.body)
 	}

@@ -38,7 +38,7 @@ func scanOne(t *testing.T, root, goos string) Action {
 
 func TestScanOneRunnable(t *testing.T) {
 	root := t.TempDir()
-	mkAction(t, root, "10_Minecraft起動", "start.lnk", "memo.txt", "desktop.ini")
+	mkAction(t, root, "50_Minecraft起動", "start.lnk", "memo.txt", "desktop.ini")
 	a := scanOne(t, root, "windows")
 	if a.Broken || a.Run != "start.lnk" || a.Name != "Minecraft起動" || a.Icon != "" || a.Confirm != nil {
 		t.Fatalf("%+v", a)
@@ -73,7 +73,7 @@ func TestScanBrokenCases(t *testing.T) {
 
 func TestScanTomlRunAndBOM(t *testing.T) {
 	root := t.TempDir()
-	d := mkAction(t, root, "20_restart", "a.bat", "start.bat")
+	d := mkAction(t, root, "30_restart", "a.bat", "start.bat")
 	toml := "\xEF\xBB\xBFname = \"再起動\"\nicon = \"rotate-cw\"\nconfirm = \"\"\nrun = \"start.bat\"\ncolor = \"red\"\n"
 	writeFile(t, d+"/kido.toml", toml)
 	a := scanOne(t, root, "windows")
@@ -111,7 +111,7 @@ func TestScanIgnoresDotAndFiles(t *testing.T) {
 
 func TestIDRules(t *testing.T) {
 	for id, ok := range map[string]bool{
-		"00_sleep":              true,
+		"10_sleep":              true,
 		"マインクラフト":               true,
 		strings.Repeat("x", 64): true,
 		strings.Repeat("x", 65): false,
@@ -135,7 +135,7 @@ func TestIDRules(t *testing.T) {
 }
 
 func TestDefaultName(t *testing.T) {
-	for in, want := range map[string]string{"00_sleep": "sleep", "sleep": "sleep", "12_": "12_", "1_2_x": "2_x"} {
+	for in, want := range map[string]string{"10_sleep": "sleep", "sleep": "sleep", "12_": "12_", "1_2_x": "2_x"} {
 		if got := defaultName(in); got != want {
 			t.Errorf("%s → %s", in, got)
 		}

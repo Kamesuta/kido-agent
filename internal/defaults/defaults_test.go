@@ -30,11 +30,11 @@ func TestDefaultsWrittenOnlyWhenAbsent(t *testing.T) {
 			t.Errorf("%+v", list[3])
 		}
 		// 利用者が消したものを戻さない
-		os.RemoveAll(filepath.Join(dir, "00_sleep"))
+		os.RemoveAll(filepath.Join(dir, "10_sleep"))
 		if wrote, _ := Write(dir, goos); wrote {
 			t.Fatal("~/Kido があるのに書いた")
 		}
-		if _, err := os.Stat(filepath.Join(dir, "00_sleep")); !os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(dir, "10_sleep")); !os.IsNotExist(err) {
 			t.Fatal("消したものが戻った")
 		}
 	}

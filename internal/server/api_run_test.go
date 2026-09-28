@@ -16,36 +16,36 @@ func runReq(nonce, id string) string {
 
 func TestRunExecutesAfterReply(t *testing.T) {
 	ta := pairedAgent(t)
-	mkAction(t, ta.actionsDir, "00_sleep", "sleep.ps1", "readme.txt")
+	mkAction(t, ta.actionsDir, "10_sleep", "sleep.ps1", "readme.txt")
 	var order []string
 	launch := ta.launch
 	ta.launch = func(a actions.Action) error { order = append(order, "launch"); return launch(a) }
 	after := ta.after
 	ta.after = func(d time.Duration, f func()) { order = append(order, "scheduled"); after(d, f) }
 	_, n := ta.hello(t)
-	res := call(t, ta.apiHandler(), "POST", "/v1/run", runReq(n, "00_sleep"))
+	res := call(t, ta.apiHandler(), "POST", "/v1/run", runReq(n, "10_sleep"))
 	if res.status != 200 || res.body != `{"ok":true}` || res.sig != auth.Sign(testKey, "run-ok", n, res.body) {
 		t.Fatalf("%+v", res)
 	}
 	if strings.Join(order, ",") != "scheduled,launch" || ta.delays[0] < 300*time.Millisecond {
 		t.Fatalf("返事の後に 300ms 以上待って動かす: %v %v", order, ta.delays)
 	}
-	if len(ta.launched) != 1 || ta.launched[0] != "00_sleep/sleep.ps1" {
+	if len(ta.launched) != 1 || ta.launched[0] != "10_sleep/sleep.ps1" {
 		t.Fatal(ta.launched)
 	}
 }
 
 func TestRunErrors(t *testing.T) {
 	ta := pairedAgent(t)
-	mkAction(t, ta.actionsDir, "40_Game", "a.bat", "b.bat")
+	mkAction(t, ta.actionsDir, "50_Game", "a.bat", "b.bat")
 	cases := []struct {
 		id     string
 		status int
 		code   string
 	}{
 		{"nope", 404, "unknown_action"},
-		{"40_Game", 409, "broken_action"},
-		{"../40_Game", 404, "unknown_action"},
+		{"50_Game", 409, "broken_action"},
+		{"../50_Game", 404, "unknown_action"},
 	}
 	for _, c := range cases {
 		_, n := ta.hello(t)
@@ -55,7 +55,7 @@ func TestRunErrors(t *testing.T) {
 		}
 	}
 	_, n := ta.hello(t)
-	bad := fmt.Sprintf(`{"nonce":%q,"id":"40_Game","sig":%q}`, n, auth.Sign(testKey, "run", n, "other"))
+	bad := fmt.Sprintf(`{"nonce":%q,"id":"50_Game","sig":%q}`, n, auth.Sign(testKey, "run", n, "other"))
 	if r := call(t, ta.apiHandler(), "POST", "/v1/run", bad); r.status != 401 {
 		t.Errorf("署名違い: %+v", r)
 	}
