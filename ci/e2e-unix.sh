@@ -12,10 +12,11 @@ wait $hub || fail "本体の代わりが組めなかった"
 
 bin="$HOME/.local/bin/kido-agent"
 [ -x "$bin" ] || fail "実行ファイルが無い"
-[ "$(ls "$HOME/Kido" | wc -l)" -eq 4 ] || fail "同梱の操作が 4 つ無い"
+[ "$(find "$HOME/KidoButtons" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 4 ] || fail "同梱の操作が 4 つ無い"
+[ -f "$HOME/KidoButtons/使いかた.txt" ] || fail "使いかた.txt が無い"
 
-mkdir "$HOME/Kido/90_sh"
-printf 'touch "%s/kido-ci-sh"\n' "$HOME" >"$HOME/Kido/90_sh/touch.sh"
+mkdir "$HOME/KidoButtons/90_sh"
+printf 'touch "%s/kido-ci-sh"\n' "$HOME" >"$HOME/KidoButtons/90_sh/touch.sh"
 python3 ci/hub_stub.py list
 python3 ci/hub_stub.py run 90_sh
 sleep 2
@@ -30,5 +31,5 @@ python3 ci/hub_stub.py list || fail "入れ直しで鍵が消えた"
 sleep 2
 [ ! -e "$bin" ] || fail "実行ファイルが残っている"
 curl -fsS -m 2 http://127.0.0.1:47821/v1/hello && fail "常駐アプリが止まっていない"
-[ -d "$HOME/Kido" ] || fail "操作フォルダは残すはず"
+[ -d "$HOME/KidoButtons" ] || fail "操作フォルダは残すはず"
 echo "✓ 通し試験に通りました"

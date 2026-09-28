@@ -28,6 +28,8 @@ try {
     Assert ((Get-ItemProperty $uninstall).DisplayName -eq '起動丸エージェント') '「アプリ」一覧に無い'
     Assert (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\起動丸の操作フォルダ.lnk") 'ショートカットが無い'
     Assert ((Get-ChildItem $kido -Directory).Count -eq 4) '同梱の操作が 4 つ無い'
+    Assert (Test-Path "$kido\使いかた.txt") '使いかた.txt が無い'
+    Assert ((Get-Item -Force "$env:USERPROFILE\.kido-agent").Attributes -band [IO.FileAttributes]::Hidden) '鍵の置き場が隠れていない'
 
     # .bat(ShellExecute)と .ps1(窓なしの PowerShell)を実際に動かす
     New-Item -ItemType Directory "$kido\90_bat", "$kido\91_ps1" | Out-Null
