@@ -3,8 +3,8 @@ package server
 import (
 	"net/http"
 
-	"github.com/Kamesuta/kido-agent/internal/actions"
-	"github.com/Kamesuta/kido-agent/internal/auth"
+	"kido-agent/internal/actions"
+	"kido-agent/internal/auth"
 )
 
 func (a *agent) handleList(w http.ResponseWriter, r *http.Request) {

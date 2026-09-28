@@ -1,4 +1,4 @@
-module github.com/Kamesuta/kido-agent
+module kido-agent
 
 go 1.26.0
 

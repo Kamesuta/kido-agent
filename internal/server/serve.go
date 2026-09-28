@@ -12,10 +12,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Kamesuta/kido-agent/internal/auth"
-	"github.com/Kamesuta/kido-agent/internal/defaults"
-	"github.com/Kamesuta/kido-agent/internal/logfile"
-	"github.com/Kamesuta/kido-agent/internal/paths"
+	"kido-agent/internal/auth"
+	"kido-agent/internal/defaults"
+	"kido-agent/internal/logfile"
+	"kido-agent/internal/paths"
 )
 
 // Serve は常駐する。止める要求かシグナルが来るまで戻らない。
@@ -23,6 +23,10 @@ func Serve(version string) int {
 	cfgDir, err := paths.ConfigDir()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "設定の置き場が分かりません:", err)
+		return 1
+	}
+	if err := paths.PrepareConfigDir(cfgDir); err != nil {
+		fmt.Fprintln(os.Stderr, "設定の置き場を作れません:", err)
 		return 1
 	}
 	if lf, err := logfile.Open(cfgDir); err == nil {

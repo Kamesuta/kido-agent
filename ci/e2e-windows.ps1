@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 function Assert($cond, $msg) { if (-not $cond) { throw "失敗: $msg" } }
 
 $dest = Join-Path $env:LOCALAPPDATA 'Programs\kido-agent'
-$kido = Join-Path $env:USERPROFILE 'Kido'
+$kido = Join-Path $env:USERPROFILE 'KidoButtons'
 $uninstall = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\KidoAgent'
 
 # 途中で落ちても常駐アプリを残さない。残ると CI の手順が出力の管を握られて終わらなくなる。
@@ -52,10 +52,10 @@ try {
     Assert (-not (Test-Path $uninstall)) '「アプリ」一覧に残っている'
     Assert (-not (Get-Process kido-agentd -ErrorAction SilentlyContinue)) '常駐アプリが止まっていない'
     Assert (-not (Test-Path $dest)) 'インストール先が残っている'
-    Assert (Test-Path $kido) '~/Kido は残すはず'
+    Assert (Test-Path $kido) '~/KidoButtons は残すはず'
     Write-Host '✓ Windows の通し試験に通りました'
 } finally {
     Get-Process kido-agentd -ErrorAction SilentlyContinue | Stop-Process -Force
     Write-Host '--- ログ ---'
-    Get-Content -Encoding UTF8 "$env:APPDATA\kido-agent\kido-agent.log" -ErrorAction SilentlyContinue
+    Get-Content -Encoding UTF8 "$env:USERPROFILE\.kido-agent\kido-agent.log" -ErrorAction SilentlyContinue
 }

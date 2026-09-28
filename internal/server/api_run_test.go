@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Kamesuta/kido-agent/internal/actions"
-	"github.com/Kamesuta/kido-agent/internal/auth"
+	"kido-agent/internal/actions"
+	"kido-agent/internal/auth"
 )
 
 func runReq(nonce, id string) string {

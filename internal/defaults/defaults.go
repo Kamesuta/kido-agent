@@ -15,15 +15,15 @@ import (
 //go:embed all:data
 var defaultsFS embed.FS
 
-// Write は ~/Kido そのものが無いときだけ同梱の操作を置く。
+// Write は ~/KidoButtons そのものが無いときだけ、同梱の操作と「使いかた.txt」を置く。
 // 利用者が消した操作を勝手に戻さないよう、フォルダが 1 度でもあれば触らない。
 func Write(dir, goos string) (bool, error) {
 	if _, err := os.Lstat(dir); !errors.Is(err, fs.ErrNotExist) {
 		return false, err
 	}
-	// 途中で失敗しても半端な ~/Kido が残らない(次の起動でやり直せる)よう、
+	// 途中で失敗しても半端な ~/KidoButtons が残らない(次の起動でやり直せる)よう、
 	// 隣に作ってから名前を付け替える。
-	tmp, err := os.MkdirTemp(filepath.Dir(dir), ".Kido-init-")
+	tmp, err := os.MkdirTemp(filepath.Dir(dir), ".KidoButtons-init-")
 	if err != nil {
 		return false, err
 	}
@@ -41,6 +41,9 @@ func Write(dir, goos string) (bool, error) {
 		if err != nil {
 			return err
 		}
+		if goos == "windows" && strings.HasSuffix(p, ".txt") {
+			data = forNotepad(data)
+		}
 		mode := fs.FileMode(0o644)
 		if strings.HasSuffix(p, ".sh") {
 			mode = 0o755
@@ -54,4 +57,12 @@ func Write(dir, goos string) (bool, error) {
 		return false, err
 	}
 	return true, os.Rename(tmp, dir)
+}
+
+// forNotepad は Windows のメモ帳向けに、BOM を付けて改行を CRLF にする。
+// 古いメモ帳は BOM の無い UTF-8 を Shift_JIS と読んで文字化けし、LF だけでは改行しない。
+// リポジトリでは LF にそろえてある(.gitattributes)ので、書き出すときに変える。
+func forNotepad(data []byte) []byte {
+	crlf := strings.ReplaceAll(string(data), "\n", "\r\n")
+	return append([]byte("\ufeff"), crlf...)
 }

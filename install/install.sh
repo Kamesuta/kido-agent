@@ -34,7 +34,7 @@ detect() {
 fetch() {
 	src="${KIDO_AGENT_TARBALL:-}"
 	if [ -z "$src" ]; then
-		url="https://github.com/Kamesuta/kido-agent/releases/latest/download/kido-agent-$os-$arch.tar.gz"
+		url="https://kido-agent/releases/latest/download/kido-agent-$os-$arch.tar.gz"
 		say "ダウンロードしています: $url"
 		curl -fsSL "$url" -o "$work/pkg.tar.gz" ||
 			die "ダウンロードできませんでした。公開前は KIDO_AGENT_TARBALL に手元の tar.gz を指定してください"
@@ -172,7 +172,7 @@ main() {
 	say "入れました($("$BIN" version)): $BIN"
 	[ "$os" = darwin ] && say "「受け入れる接続を許可しますか」と聞かれたら「許可」を押してください。"
 	"autostart_$os"
-	wait_agent || die "常駐アプリが起動しませんでした。ログ: $HOME/.config/kido-agent/kido-agent.log"
+	wait_agent || die "常駐アプリが起動しませんでした。ログ: $HOME/.kido-agent/kido-agent.log"
 	[ "$os" = darwin ] && sudoers_darwin
 	say ""
 	# 更新で入れ直したときは組み直さない(pair は古い鍵を消してしまう)。
@@ -182,7 +182,7 @@ main() {
 	esac
 	"$BIN" open >/dev/null 2>&1 || true
 	say ""
-	say "操作フォルダ(~/Kido)を開きました。スクリプトやアプリを入れたフォルダを作ると、スマホに操作が増えます。"
+	say "操作フォルダ(~/KidoButtons)を開きました。スクリプトやアプリを入れたフォルダを作ると、スマホに操作が増えます。"
 	path_hint
 	say "困ったときは: kido-agent check"
 }

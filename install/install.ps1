@@ -30,7 +30,7 @@ $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
 $Dest = Join-Path $env:LOCALAPPDATA 'Programs\kido-agent'
-$Kido = Join-Path $env:USERPROFILE 'Kido'
+$Kido = Join-Path $env:USERPROFILE 'KidoButtons'
 $UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\KidoAgent'
 
 function Get-Arch {
@@ -43,7 +43,7 @@ function Get-Arch {
 function Get-Package([string]$Work) {
     $src = $From
     if (-not $src) {
-        $url = "https://github.com/Kamesuta/kido-agent/releases/latest/download/kido-agent-windows-$(Get-Arch).zip"
+        $url = "https://kido-agent/releases/latest/download/kido-agent-windows-$(Get-Arch).zip"
         Write-Host "ダウンロードしています: $url"
         $src = Join-Path $Work 'kido-agent.zip'
         try { Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $src }
@@ -115,7 +115,7 @@ function Register-Agent([string]$Version) {
 }
 
 # New-FolderShortcut はスタートメニューから操作フォルダを開けるようにする。
-# ~/Kido は常駐アプリが最初の起動で作るので、できるまで少し待ってから作る。
+# ~/KidoButtons は常駐アプリが最初の起動で作るので、できるまで少し待ってから作る。
 # WScript.Shell は日本語でない Windows だと日本語のファイル名で保存できないので、
 # 英字の名前で保存してから付け替える。
 function New-FolderShortcut {
@@ -157,7 +157,7 @@ try {
     Write-Host '(起動丸の本体から、この PC に届くようにするためです)'
     Start-Process -FilePath "$Dest\kido-agentd.exe" -WorkingDirectory $Dest
     $status = Wait-Agent
-    if (-not $status) { throw '常駐アプリが起動しませんでした。ログ: %APPDATA%\kido-agent\kido-agent.log' }
+    if (-not $status) { throw '常駐アプリが起動しませんでした。ログ: %USERPROFILE%\.kido-agent\kido-agent.log' }
     New-FolderShortcut
     Write-Host ''
     # 更新で入れ直したときは組み直さない(pair は古い鍵を消してしまう)。
@@ -169,7 +169,7 @@ try {
     }
     & "$Dest\kido-agent.exe" open | Out-Null
     Write-Host ''
-    Write-Host '操作フォルダ(~/Kido)を開きました。ショートカットを入れたフォルダを作ると、スマホに操作が増えます。'
+    Write-Host '操作フォルダ(~/KidoButtons)を開きました。ショートカットを入れたフォルダを作ると、スマホに操作が増えます。'
     Write-Host '困ったときは: kido-agent check'
 } catch {
     Write-Host "インストールに失敗しました: $($_.Exception.Message)" -ForegroundColor Red

@@ -7,10 +7,10 @@ import (
 	"io/fs"
 	"runtime"
 
-	"github.com/Kamesuta/kido-agent/internal/actions"
-	"github.com/Kamesuta/kido-agent/internal/auth"
-	"github.com/Kamesuta/kido-agent/internal/control"
-	"github.com/Kamesuta/kido-agent/internal/paths"
+	"kido-agent/internal/actions"
+	"kido-agent/internal/auth"
+	"kido-agent/internal/control"
+	"kido-agent/internal/paths"
 )
 
 func cmdCheck(out io.Writer) int {
@@ -95,7 +95,7 @@ func checkActions(out io.Writer, dir, goos string) (bad bool) {
 		}
 	}
 	if valid == 0 {
-		fmt.Fprintln(out, "! 操作がありません。~/Kido にフォルダを作り、ショートカットやスクリプトを置いてください")
+		fmt.Fprintln(out, "! 操作がありません。~/KidoButtons にフォルダを作り、ショートカットやスクリプトを置いてください")
 	}
 	if _, sent := actions.ListBody(list); sent < valid {
 		fmt.Fprintf(out, "! 本体に送れるのは先頭の %d 個までです(%d 個まで・合わせて %d バイトまで)。残りは表示されません\n",

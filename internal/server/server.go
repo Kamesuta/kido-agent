@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/Kamesuta/kido-agent/internal/actions"
-	"github.com/Kamesuta/kido-agent/internal/auth"
-	"github.com/Kamesuta/kido-agent/internal/launch"
+	"kido-agent/internal/actions"
+	"kido-agent/internal/auth"
+	"kido-agent/internal/launch"
 )
 
 // agent は鍵・組める時間・nonce・操作フォルダを束ねる。

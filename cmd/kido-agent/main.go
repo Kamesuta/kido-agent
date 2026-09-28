@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Kamesuta/kido-agent/internal/server"
+	"kido-agent/internal/server"
 )
 
 // version はリリースのビルドで -ldflags -X main.version=... により埋め込む。
@@ -20,8 +20,8 @@ const usage = `起動丸エージェント
   serve      常駐する(普段はログイン時に自動で起動します)
   pair       起動丸の本体と組む(10 分間だけ受け付けます)
   check      操作フォルダの中身と、組めているかを確かめる
-  open       操作フォルダ(~/Kido)を開く
-  uninstall  このアプリを取り除く(~/Kido は残します)
+  open       操作フォルダ(~/KidoButtons)を開く
+  uninstall  このアプリを取り除く(~/KidoButtons は残します)
   version    版を表示する
 `
 

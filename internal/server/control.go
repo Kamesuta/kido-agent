@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/Kamesuta/kido-agent/internal/auth"
-	"github.com/Kamesuta/kido-agent/internal/control"
+	"kido-agent/internal/auth"
+	"kido-agent/internal/control"
 )
 
 // controlHandler は同じ PC の CLI(pair・check・uninstall)から使う窓口。

@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/Kamesuta/kido-agent/internal/auth"
-	"github.com/Kamesuta/kido-agent/internal/control"
+	"kido-agent/internal/auth"
+	"kido-agent/internal/control"
 )
 
 func cmdPair(out io.Writer) int {

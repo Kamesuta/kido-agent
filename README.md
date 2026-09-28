@@ -30,7 +30,7 @@ curl -fsSL https://pc.kido.page/install.sh | sh
    - Linux: `~/.local/bin/kido-agent` と `systemd --user` の `kido-agent.service`
 2. ファイアウォールの確認(Windows は「Windows セキュリティ」)が出たら「許可」を押す
 3. `kido-agent pair` が動き、起動丸の本体が見つけに来るのを 10 分のあいだ待つ。起動ページにこの PC をまだ登録していなければ、そのあいだにスマホで登録する
-4. 操作フォルダ `~/Kido` を開く
+4. 操作フォルダ `~/KidoButtons` を開く
 
 ### 公開前(リポジトリが非公開のあいだ)の入れ方
 
@@ -49,8 +49,9 @@ KIDO_AGENT_TARBALL=/path/kido-agent-darwin-arm64.tar.gz sh install/install.sh
 
 ## 操作フォルダ
 
-`~/Kido/<フォルダ>/` が 1 つの操作です。最初の起動で、スリープ・画面ロック・再起動・シャットダウンの 4 つを置きます
-(`~/Kido` そのものが無いときだけ。消したものは戻しません)。
+`~/KidoButtons/<フォルダ>/` が 1 つの操作です。最初の起動で、スリープ・画面ロック・再起動・シャットダウンの 4 つを置きます
+(`~/KidoButtons` そのものが無いときだけ。消したものは戻しません)。
+フォルダの使いかたを書いた `使いかた.txt` も一緒に置きます(Windows ではメモ帳で開けるよう BOM 付き・CRLF)。
 
 - フォルダ名が操作の ID で、表示名はフォルダ名から先頭の番号と `_` を除いたもの(`50_マイクラ` → `マイクラ`)。並びはフォルダ名の順
 - 同梱の操作は `10_sleep` `20_lock` `30_restart` `40_shutdown`。10 刻みにしてあるので、間に入れたければ `15_` のように番号を選ぶ
@@ -91,10 +92,10 @@ run = "start.bat"
 | `kido-agent pair` | 本体と組む。10 分だけ受け付ける。組み直すと古い組み合わせは使えなくなる |
 | `kido-agent check` | 操作フォルダを確かめ、✓ / ✗(押せない。理由と直し方)/ !(警告)で表示する。組めているかも出す |
 | `kido-agent open` | 操作フォルダを開く |
-| `kido-agent uninstall` | 取り除く。`~/Kido` は残す |
+| `kido-agent uninstall` | 取り除く。`~/KidoButtons` は残す |
 | `kido-agent version` | 版を出す |
 
-鍵とログの置き場: Windows `%APPDATA%\kido-agent\`、Mac・Linux `~/.config/kido-agent/`(ログは `kido-agent.log`、1MB で 1 世代回す)。
+鍵とログの置き場: どの OS も `~/.kido-agent/`(Windows では隠しフォルダ)(ログは `kido-agent.log`、1MB で 1 世代回す)。
 
 ## 開発
 
@@ -130,8 +131,8 @@ pwsh ci/package-windows.ps1 -Version dev -Arch amd64 -Out dist
 - 動いている常駐アプリの隣で試すときは、待ち受けを `KIDO_AGENT_API_ADDR` `KIDO_AGENT_CONTROL_ADDR`、鍵とログの置き場を `KIDO_AGENT_CONFIG_DIR` で変えられる
 - `ci/hub_stub.py` は本体の代わりをする試験用の道具。`pair` `list` `run <id>` を送る
 - CI(`.github/workflows/ci.yml`)は 3 つの OS でテストし、Windows・Mac・Linux ではインストールから取り除くまでを実物で通す
-- 同梱の操作を入れ直したい(新しい同梱の操作を試したい)ときは、`~/Kido` を消してから `kido-agent serve` を起動する。
-  同梱の操作は `~/Kido` そのものが無いときだけ書き出すので、あるうちは何度起動しても変わらない
+- 同梱の操作を入れ直したい(新しい同梱の操作を試したい)ときは、`~/KidoButtons` を消してから `kido-agent serve` を起動する。
+  同梱の操作は `~/KidoButtons` そのものが無いときだけ書き出すので、あるうちは何度起動しても変わらない
 
 ### リリース
 

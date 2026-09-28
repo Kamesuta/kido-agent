@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"runtime"
 
-	"github.com/Kamesuta/kido-agent/internal/defaults"
-	"github.com/Kamesuta/kido-agent/internal/paths"
+	"kido-agent/internal/defaults"
+	"kido-agent/internal/paths"
 )
 
 func cmdOpen(out io.Writer) int {

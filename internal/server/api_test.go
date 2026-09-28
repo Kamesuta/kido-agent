@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Kamesuta/kido-agent/internal/auth"
+	"kido-agent/internal/auth"
 )
 
 type apiResult struct {

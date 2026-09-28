@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Kamesuta/kido-agent/internal/actions"
+	"kido-agent/internal/actions"
 )
 
 // testAgent は時計と実行を差し替えた agent。実際にスリープさせないため。
@@ -22,7 +22,7 @@ type testAgent struct {
 func newTestAgent(t *testing.T) *testAgent {
 	t.Helper()
 	base := t.TempDir()
-	dir := filepath.Join(base, "Kido")
+	dir := filepath.Join(base, "KidoButtons")
 	if err := os.Mkdir(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Kamesuta/kido-agent/internal/paths"
+	"kido-agent/internal/paths"
 )
 
 // Header が無い要求を常駐アプリは断る。ブラウザの中のページから 127.0.0.1 へ

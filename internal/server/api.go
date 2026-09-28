@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Kamesuta/kido-agent/internal/auth"
+	"kido-agent/internal/auth"
 )
 
 // 本体から届く要求の本文の上限。取り決めの要求はどれも数百バイトに収まる。

@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/Kamesuta/kido-agent/internal/control"
-	"github.com/Kamesuta/kido-agent/internal/paths"
-	"github.com/Kamesuta/kido-agent/internal/uninstall"
+	"kido-agent/internal/control"
+	"kido-agent/internal/paths"
+	"kido-agent/internal/uninstall"
 )
 
 func cmdUninstall(out io.Writer) int {
