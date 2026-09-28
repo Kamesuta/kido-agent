@@ -39,12 +39,12 @@ curl -fsSL https://pc.kido.page/install.sh | sh
 ```powershell
 # Windows(Windows PowerShell 5.1 は BOM の無い .ps1 を -File で読むと日本語が化けるので、UTF-8 と指定して読ませる)
 $env:KIDO_AGENT_ZIP = "C:\path\kido-agent-windows-amd64.zip"   # 展開したフォルダでもよい
-Get-Content -Raw -Encoding UTF8 .\install.ps1 | iex
+Get-Content -Raw -Encoding UTF8 .\install\install.ps1 | iex
 ```
 
 ```sh
 # Mac・Linux
-KIDO_AGENT_TARBALL=/path/kido-agent-darwin-arm64.tar.gz sh install.sh
+KIDO_AGENT_TARBALL=/path/kido-agent-darwin-arm64.tar.gz sh install/install.sh
 ```
 
 ## 操作フォルダ
@@ -99,12 +99,26 @@ run = "start.bat"
 
 本体とのやり取りは [PROTOCOL.md](PROTOCOL.md) が取り決めです。これに合わせて作ります。
 
+| 場所 | 中身 |
+|---|---|
+| `cmd/kido-agent/` | 入口とコマンド(pair・check・open・uninstall) |
+| `internal/auth/` | 鍵・nonce・署名と、組める時間 |
+| `internal/actions/` | 操作フォルダを読む・kido.toml・上限・一覧の本文 |
+| `internal/server/` | 本体からの要求と CLI からの要求を受ける常駐の本体 |
+| `internal/control/` | CLI から常駐アプリへの問い合わせ |
+| `internal/launch/` | OS ごとの実行のしかた |
+| `internal/defaults/` | 同梱の操作(`data/<os>/`)と書き出し |
+| `internal/uninstall/` | OS ごとの片付け |
+| `internal/paths/` `internal/logfile/` | 置き場所とログ |
+| `install/` | インストールの手順(`install.ps1` `install.sh`) |
+| `ci/` `site/` | CI の道具と、案内のページ |
+
 ```sh
 go vet ./...
 go test ./...
 # 全部の OS・CPU 向け(cgo は使わない)
 for t in windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
-  GOOS=${t%/*} GOARCH=${t#*/} CGO_ENABLED=0 go build -o /dev/null .
+  GOOS=${t%/*} GOARCH=${t#*/} CGO_ENABLED=0 go build ./...
 done
 # Windows の zip(PowerShell 7 ならどの OS でも)
 pwsh ci/package-windows.ps1 -Version dev -Arch amd64 -Out dist
@@ -126,6 +140,6 @@ git tag v0.1.0 && git push origin v0.1.0
 
 ### 案内のページ
 
-`site/` を GitHub Pages(`pc.kido.page`)に出します。出すときに `install.ps1` `install.sh` を写すので、
+`site/` を GitHub Pages(`pc.kido.page`)に出します。出すときに `install/` の `install.ps1` `install.sh` を写すので、
 `https://pc.kido.page/install.ps1` が手順の本物と同じになります。
 リポジトリが非公開のあいだは、無料の契約では Pages を使えないため `pages.yml` は失敗します(公開後に通ります)。

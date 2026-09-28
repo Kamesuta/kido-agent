@@ -19,7 +19,7 @@ try {
     $null = $hub.Handle # 取っておかないと、終わった後に ExitCode が読めない
     $env:KIDO_AGENT_ZIP = (Resolve-Path $Zip).Path
     Write-Host '== インストール'
-    Get-Content -Raw -Encoding UTF8 install.ps1 | Invoke-Expression
+    Get-Content -Raw -Encoding UTF8 install/install.ps1 | Invoke-Expression
     $hub.WaitForExit()
     Assert ($hub.ExitCode -eq 0) '本体の代わりが組めなかった'
 
@@ -44,7 +44,7 @@ try {
     Assert ($LASTEXITCODE -eq 0) 'check が失敗した'
 
     # 更新(入れ直し)では組み直さない
-    Get-Content -Raw -Encoding UTF8 install.ps1 | Invoke-Expression
+    Get-Content -Raw -Encoding UTF8 install/install.ps1 | Invoke-Expression
     python ci/hub_stub.py list; Assert ($LASTEXITCODE -eq 0) '入れ直しで鍵が消えた'
 
     & "$dest\kido-agent.exe" uninstall

@@ -24,8 +24,8 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
-      # 手順の本物はリポジトリの直下に 1 つだけ置き、出すときに写す(2 つを手で合わせない)
-      - run: cp install.ps1 install.sh site/
+      # 手順の本物は install/ に 1 つだけ置き、出すときに写す(2 つを手で合わせない)
+      - run: cp install/install.ps1 install/install.sh site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

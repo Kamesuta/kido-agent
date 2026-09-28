@@ -7,7 +7,7 @@ fail() { echo "失敗: $*" >&2; exit 1; }
 
 python3 ci/hub_stub.py pair &
 hub=$!
-KIDO_AGENT_TARBALL=$tarball sh install.sh </dev/null
+KIDO_AGENT_TARBALL=$tarball sh install/install.sh </dev/null
 wait $hub || fail "本体の代わりが組めなかった"
 
 bin="$HOME/.local/bin/kido-agent"
@@ -23,7 +23,7 @@ sleep 2
 "$bin" check || fail "check が失敗した"
 
 # 更新(入れ直し)では組み直さない
-KIDO_AGENT_TARBALL=$tarball sh install.sh </dev/null
+KIDO_AGENT_TARBALL=$tarball sh install/install.sh </dev/null
 python3 ci/hub_stub.py list || fail "入れ直しで鍵が消えた"
 
 "$bin" uninstall

@@ -30,7 +30,7 @@ jobs:
             os=${t%/*}; arch=${t#*/}; stage=dist/$os-$arch
             mkdir -p "$stage"
             GOOS=$os GOARCH=$arch go build -trimpath \
-              -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o "$stage/kido-agent" .
+              -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o "$stage/kido-agent" ./cmd/kido-agent
             tar -czf "dist/kido-agent-$os-$arch.tar.gz" -C "$stage" kido-agent
           done
       - name: checksums
