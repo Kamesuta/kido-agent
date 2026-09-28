@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>起動丸エージェント — PC に入れる常駐アプリ</title>
+<meta name="description" content="起動丸で、スマホからこの PC をスリープ・ロック・再起動・シャットダウンできるようにする常駐アプリ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>起動丸エージェント<span class="dot">.</span></h1>
+  <p class="lead">起動丸で、スマホからこの PC をスリープ・画面ロック・再起動・シャットダウンできるようにする常駐アプリです。ゲームの起動など、自分で作った操作も足せます。</p>
+  <p class="note">Windows・Mac・Linux に対応しています(Linux は Ubuntu で動作確認)。管理者の権限は要りません。</p>
+
+  <h2>インストール</h2>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" data-os="windows">Windows</button>
+    <button type="button" role="tab" data-os="mac">Mac</button>
+    <button type="button" role="tab" data-os="linux">Linux</button>
+  </div>
+
+  <div class="card panel" data-os="windows">
+    <ol>
+      <li>スタートボタンを右クリックして「ターミナル」(または「Windows PowerShell」)を開きます</li>
+      <li>下の 1 行を貼り付けて Enter を押します</li>
+    </ol>
+    <div class="command"><code>irm https://pc.kido.page/install.ps1 | iex</code><button type="button">コピー</button></div>
+  </div>
+
+  <div class="card panel" data-os="mac" hidden>
+    <ol>
+      <li>「ターミナル」を開きます(Spotlight で「ターミナル」と入力)</li>
+      <li>下の 1 行を貼り付けて Enter を押します</li>
+      <li>再起動・シャットダウン用の許可を入れるか聞かれたら、Enter を押して Mac のログインパスワードを入れます(入力中の文字は表示されません)</li>
+    </ol>
+    <div class="command"><code>curl -fsSL https://pc.kido.page/install.sh | sh</code><button type="button">コピー</button></div>
+  </div>
+
+  <div class="card panel" data-os="linux" hidden>
+    <ol>
+      <li>端末を開きます(Ubuntu なら Ctrl + Alt + T)</li>
+      <li>下の 1 行を貼り付けて Enter を押します</li>
+    </ol>
+    <div class="command"><code>curl -fsSL https://pc.kido.page/install.sh | sh</code><button type="button">コピー</button></div>
+  </div>
+
+  <h2>このあと</h2>
+  <ol>
+    <li><strong>ファイアウォールの許可</strong> — Windows では「Windows セキュリティの重要な警告」が出ます。「プライベート ネットワーク」に印が付いていることを確かめて「アクセスを許可する」を押してください。Mac でも「受け入れる接続を許可しますか」と聞かれたら「許可」を押します。</li>
+    <li><strong>本体と組む</strong> — 画面に「本体からの連絡を待っています」と出たら、<strong>10 分以内</strong>にスマホで起動ページを開き、この PC を登録してください。「✓ 本体とつながりました」と出れば終わりです。</li>
+    <li><strong>操作フォルダが開く</strong> — スマホに、スリープ・画面ロック・再起動・シャットダウンの 4 つが並びます。</li>
+  </ol>
+
+  <h2>自分の操作を足す</h2>
+  <p>ホームフォルダの <code>Kido</code>(Windows なら <code>C:\Users\あなたの名前\Kido</code>)が操作フォルダです。スタートメニューの「起動丸の操作フォルダ」からも開けます。</p>
+  <ol>
+    <li><code>Kido</code> の中にフォルダを作ります。フォルダ名がそのままスマホに出る名前になります(先頭の <code>10_</code> のような番号は並び順のためのもので、表示されません)</li>
+    <li>そのフォルダに、動かしたいものを <strong>1 つだけ</strong>入れます
+      <ul>
+        <li>Windows: ショートカット(<code>.lnk</code>)、<code>.bat</code> <code>.cmd</code> <code>.ps1</code> <code>.exe</code></li>
+        <li>Mac: <code>.app</code>、<code>.sh</code> <code>.command</code></li>
+        <li>Linux: <code>.sh</code> <code>.desktop</code>、実行権限の付いたファイル</li>
+      </ul>
+    </li>
+  </ol>
+  <p>次にスマホで一覧を開いたときから使えます。常駐アプリの再起動は要りません。</p>
+
+  <h3>kido.toml(なくても動きます)</h3>
+  <p>フォルダに <code>kido.toml</code> を置くと、名前やアイコンを変えられます。</p>
+<pre>name = "マイクラ起動"          # スマホに出る名前(32 文字まで)
+icon = "gamepad-2"            # アイコンの名前
+confirm = "本当に起動しますか?"  # 押したときに確認を出す(200 文字まで)
+run = "start.bat"             # 動かすファイルが 2 つ以上あるときに、どれかを選ぶ</pre>
+  <ul>
+    <li><code>icon</code> は <a href="https://lucide.dev/icons" target="_blank" rel="noopener">lucide.dev/icons</a> にある名前を、英小文字のまま書きます</li>
+    <li><code>confirm = ""</code> にすると、文章なしで「実行しますか」だけを聞きます</li>
+    <li><code>run</code> には同じフォルダの中のファイル名だけを書けます</li>
+  </ul>
+
+  <h2>困ったとき</h2>
+  <div class="card">
+    <h3 style="margin-top:0">操作フォルダがおかしい・スマホに出ない</h3>
+    <div class="command"><code>kido-agent check</code><button type="button">コピー</button></div>
+    <p>フォルダごとに ✓(使える)・✗(押せない。理由と直し方も出ます)・!(動くが気を付けること)を表示します。組めているかも分かります。</p>
+    <h3>本体と組み直したい・組めなかった</h3>
+    <div class="command"><code>kido-agent pair</code><button type="button">コピー</button></div>
+    <p>組み直すと、それまでの組み合わせは使えなくなります。組めないときは、ファイアウォールの許可、本体の電源、PC と本体が同じネットワークにいるか(Windows ではネットワークが「プライベート」になっているか)を確かめてください。</p>
+  </div>
+
+  <h2>取り除く</h2>
+  <p>Windows は「設定」→「アプリ」→「インストールされているアプリ」の「起動丸エージェント」からアンインストールできます。どの OS でも次のコマンドで取り除けます。</p>
+  <div class="command"><code>kido-agent uninstall</code><button type="button">コピー</button></div>
+  <p class="note">操作フォルダ(<code>Kido</code>)は残ります。要らなければ手で消してください。</p>
+
+  <footer>起動丸(Kido)</footer>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
