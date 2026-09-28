@@ -28,7 +28,7 @@ curl -fsSL https://pc.kido.page/install.sh | sh
    - Windows: `%LOCALAPPDATA%\Programs\kido-agent\`、スタートメニューに「起動丸の操作フォルダ」、「アプリ」一覧に「起動丸エージェント」
    - Mac: `~/.local/bin/kido-agent` と LaunchAgent(`page.kido.agent`)。再起動・シャットダウン用に `/sbin/shutdown` だけをパスワードなしで許す設定(`/etc/sudoers.d/kido-agent`)を入れるか聞く
    - Linux: `~/.local/bin/kido-agent` と `systemd --user` の `kido-agent.service`
-2. ファイアウォールの確認が出たら「許可」を押す(Windows は「プライベート ネットワーク」)
+2. ファイアウォールの確認(Windows は「Windows セキュリティ」)が出たら「許可」を押す
 3. `kido-agent pair` が動き、10 分のあいだ起動丸の本体からの連絡を待つ。スマホの起動ページでこの PC を登録する
 4. 操作フォルダ `~/Kido` を開く
 
