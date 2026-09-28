@@ -1,0 +1,43 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+      - name: windows
+        shell: pwsh
+        run: |
+          foreach ($arch in 'amd64', 'arm64') {
+            ./ci/package-windows.ps1 -Version $env:GITHUB_REF_NAME -Arch $arch -Out dist
+          }
+      - name: mac / linux
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          for t in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
+            os=${t%/*}; arch=${t#*/}; stage=dist/$os-$arch
+            mkdir -p "$stage"
+            GOOS=$os GOARCH=$arch go build -trimpath \
+              -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o "$stage/kido-agent" .
+            tar -czf "dist/kido-agent-$os-$arch.tar.gz" -C "$stage" kido-agent
+          done
+      - name: checksums
+        run: cd dist && sha256sum *.zip *.tar.gz > SHA256SUMS && cat SHA256SUMS
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes \
+            dist/*.zip dist/*.tar.gz dist/SHA256SUMS

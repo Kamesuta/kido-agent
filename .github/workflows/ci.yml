@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...
+
+  # cgo を使わずに全部の OS・CPU 向けに作れることを確かめる
+  cross-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: build
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          for t in windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
+            GOOS=${t%/*} GOARCH=${t#*/} go vet ./...
+            GOOS=${t%/*} GOARCH=${t#*/} go build -o /dev/null .
+          done
+      - name: shellcheck
+        run: shellcheck install.sh ci/e2e-unix.sh defaults/*/*/*.sh
+
+  # インストールから取り除くまでを実物で通す。Windows の振る舞い(レジストリ・
+  # GUI 版の常駐・ShellExecute)は手元で確かめにくいので、ここで確かめる。
+  e2e-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: build
+        shell: pwsh
+        run: ./ci/package-windows.ps1 -Version ci -Arch amd64 -Out dist
+      - name: install, run, uninstall
+        shell: powershell
+        env:
+          KIDO_CI_ZIP: dist/kido-agent-windows-amd64.zip
+        run: Get-Content -Raw -Encoding UTF8 ci/e2e-windows.ps1 | Invoke-Expression
+
+  e2e-unix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    # GitHub の Linux の実行環境には利用者の systemd が無いことがあるので、落ちても止めない
+    continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: build
+        run: |
+          CGO_ENABLED=0 go build -ldflags "-X main.version=ci" -o dist/kido-agent .
+          tar -czf dist/kido-agent.tar.gz -C dist kido-agent
+      - name: install, run, uninstall
+        run: sh ci/e2e-unix.sh dist/kido-agent.tar.gz
