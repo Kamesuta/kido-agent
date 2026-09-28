@@ -111,12 +111,16 @@ function Register-Agent([string]$Version) {
 
 # New-FolderShortcut はスタートメニューから操作フォルダを開けるようにする。
 # ~/Kido は常駐アプリが最初の起動で作るので、できるまで少し待ってから作る。
+# WScript.Shell は日本語でない Windows だと日本語のファイル名で保存できないので、
+# 英字の名前で保存してから付け替える。
 function New-FolderShortcut {
     foreach ($i in 1..50) { if (Test-Path $Kido) { break }; Start-Sleep -Milliseconds 100 }
     $programs = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
-    $link = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $programs '起動丸の操作フォルダ.lnk'))
+    $tmp = Join-Path $programs 'kido-agent-folder.lnk'
+    $link = (New-Object -ComObject WScript.Shell).CreateShortcut($tmp)
     $link.TargetPath = $Kido
     $link.Save()
+    Move-Item -LiteralPath $tmp -Destination (Join-Path $programs '起動丸の操作フォルダ.lnk') -Force
 }
 
 # Wait-Agent は常駐アプリが答えるまで待ち、その状態を返す(起動しなければ $null)。

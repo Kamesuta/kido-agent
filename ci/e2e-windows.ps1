@@ -57,5 +57,5 @@ try {
 } finally {
     Get-Process kido-agentd -ErrorAction SilentlyContinue | Stop-Process -Force
     Write-Host '--- ログ ---'
-    Get-Content "$env:APPDATA\kido-agent\kido-agent.log" -ErrorAction SilentlyContinue
+    Get-Content -Encoding UTF8 "$env:APPDATA\kido-agent\kido-agent.log" -ErrorAction SilentlyContinue
 }
