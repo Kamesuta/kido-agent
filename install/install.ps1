@@ -17,10 +17,15 @@ param(
 # 本体は下のヒア文字列に入れてある。Windows PowerShell 5.1 の irm は文字コードの
 # 指定が無い応答を UTF-8 として読まず、日本語が化けて文字列の区切りまで壊れることがある。
 # ヒア文字列の中なら化けても構文は壊れないので、化けていたら UTF-8 で読み直してやり直す。
+# 進み具合の表示を止める。Windows Terminal では Expand-Archive などの進み具合の表示と
+# 重なって日本語が二重に崩れるうえ、5.1 では取得もとても遅くなる。Expand-Archive は
+# モジュールの関数で呼び出し元の変数を見ないので、global に書き、最後に元へ戻す。
+$KidoSavedProgress = $global:ProgressPreference
+$global:ProgressPreference = 'SilentlyContinue'
+
 $Main = @'
 param([string]$From)
 $ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue' # 5.1 は進み具合の表示のせいで取得がとても遅くなる
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
@@ -148,8 +153,7 @@ try {
     $env:Path = "$env:Path;$Dest"
     Write-Host "入れました($version): $Dest"
     Write-Host ''
-    Write-Host '常駐アプリを起動します。「Windows セキュリティの重要な警告」が出たら、'
-    Write-Host '「プライベート ネットワーク」に印が付いていることを確かめて「アクセスを許可する」を押してください。'
+    Write-Host '常駐アプリを起動します。「Windows セキュリティ」の確認が出たら「許可」を押してください。'
     Write-Host '(起動丸の本体から、この PC に届くようにするためです)'
     Start-Process -FilePath "$Dest\kido-agentd.exe" -WorkingDirectory $Dest
     $status = Wait-Agent
@@ -174,14 +178,18 @@ try {
 }
 '@
 
-# 「起」(U+8D77)が 1 文字として読めていれば、文字コードは正しい。
-# ここから下は化けた状態でも動く必要があるので、文字列に日本語を書かない。
-if (-not $Main.Contains([string][char]0x8D77)) {
-    if ($Decoded) { throw 'install.ps1: failed to read as UTF-8' }
-    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-    $bytes = (New-Object Net.WebClient).DownloadData('https://pc.kido.page/install.ps1')
-    $text = [Text.Encoding]::UTF8.GetString($bytes)
-    & ([scriptblock]::Create($text)) -From $From -Decoded
-    return
+try {
+    # 「起」(U+8D77)が 1 文字として読めていれば、文字コードは正しい。
+    # ここから下は化けた状態でも動く必要があるので、文字列に日本語を書かない。
+    if (-not $Main.Contains([string][char]0x8D77)) {
+        if ($Decoded) { throw 'install.ps1: failed to read as UTF-8' }
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        $bytes = (New-Object Net.WebClient).DownloadData('https://pc.kido.page/install.ps1')
+        $text = [Text.Encoding]::UTF8.GetString($bytes)
+        & ([scriptblock]::Create($text)) -From $From -Decoded
+        return
+    }
+    & ([scriptblock]::Create($Main)) -From $From
+} finally {
+    $global:ProgressPreference = $KidoSavedProgress
 }
-& ([scriptblock]::Create($Main)) -From $From
