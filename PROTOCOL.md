@@ -59,15 +59,15 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
 
 ```json
 {"actions":[
-  {"id":"00_sleep","name":"スリープ","icon":"moon"},
-  {"id":"30_shutdown","name":"シャットダウン","icon":"power","confirm":"開いているアプリはすべて閉じられます。\n保存していないデータは消えてしまいます。"},
-  {"id":"40_Minecraft起動","name":"Minecraft起動","broken":true}
+  {"id":"10_sleep","name":"スリープ","icon":"moon"},
+  {"id":"40_shutdown","name":"シャットダウン","icon":"power","confirm":"開いているアプリはすべて閉じられます。\n保存していないデータは消えてしまいます。"},
+  {"id":"50_Minecraft起動","name":"Minecraft起動","broken":true}
 ]}
 ```
 
 - 応答には **`X-Kido-Sig: <HMAC(key, "list-ok\n" + nonce + "\n" + 本文のバイト列)>`** ヘッダを付ける。本体は本文を JSON として読む前に、生のバイト列で確かめる
 - `id` はフォルダ名そのもの。`name` はフォルダ名から先頭の番号と `_` を除いたもの
-  - `00_sleep` → `sleep`。同梱の操作は `kido.toml` の `name` で日本語名を付ける(下)
+  - `10_sleep` → `sleep`。同梱の操作は `kido.toml` の `name` で日本語名を付ける(下)
 - `icon` は `kido.toml` の `icon`。無ければ省く
 - `confirm` は `kido.toml` の `confirm`。無ければ省く。空文字なら `""` を送る(本文なしの確認)
 - `broken` は設定が壊れていて押せない操作(実行できるファイルが無い・2つ以上ある・`kido.toml` が読めない)だけに `true` を付ける
@@ -78,7 +78,7 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
 
 ### `POST /v1/run`
 
-要求: `{"nonce":"…","id":"00_sleep","sig":"<HMAC(key, "run\n" + nonce + "\n" + id)>"}`
+要求: `{"nonce":"…","id":"10_sleep","sig":"<HMAC(key, "run\n" + nonce + "\n" + id)>"}`
 
 - 200 `{"ok":true}` + `X-Kido-Sig: <HMAC(key, "run-ok\n" + nonce + "\n" + 本文のバイト列)>`
   - **応答を送り切ってから実行する**(少なくとも 300ms 待つ)。先に寝ると、本体に返事が届かない
