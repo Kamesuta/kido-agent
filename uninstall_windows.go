@@ -47,6 +47,7 @@ func removeProgram(out io.Writer) {
 		fmt.Fprintln(out, "! インストール先ではないようなので残します:", dir)
 		return
 	}
+	removeUserPath(dir)
 	cmd := exec.Command("cmd.exe")
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow:    true,

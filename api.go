@@ -101,5 +101,8 @@ func writeBody(w http.ResponseWriter, status int, body []byte, sig string) {
 }
 
 func writeError(w http.ResponseWriter, status int, code string) {
-	writeBody(w, status, encodeJSON(map[string]any{"ok": false, "error": code}), "")
+	writeBody(w, status, encodeJSON(struct {
+		OK    bool   `json:"ok"`
+		Error string `json:"error"`
+	}{false, code}), "")
 }

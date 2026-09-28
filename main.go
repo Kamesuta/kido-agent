@@ -11,7 +11,9 @@ import (
 // version はリリースのビルドで -ldflags -X main.version=... により埋め込む。
 var version = "dev"
 
-const usage = `使い方: kido-agent <コマンド>
+const usage = `起動丸エージェント
+
+使い方: kido-agent <コマンド>
 
   serve      常駐する(普段はログイン時に自動で起動します)
   pair       起動丸の本体と組む(10 分間だけ受け付けます)
