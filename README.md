@@ -29,7 +29,7 @@ curl -fsSL https://pc.kido.page/install.sh | sh
    - Mac: `~/.local/bin/kido-agent` と LaunchAgent(`page.kido.agent`)。再起動・シャットダウン用に `/sbin/shutdown` だけをパスワードなしで許す設定(`/etc/sudoers.d/kido-agent`)を入れるか聞く
    - Linux: `~/.local/bin/kido-agent` と `systemd --user` の `kido-agent.service`
 2. ファイアウォールの確認(Windows は「Windows セキュリティ」)が出たら「許可」を押す
-3. `kido-agent pair` が動き、10 分のあいだ起動丸の本体からの連絡を待つ。スマホの起動ページでこの PC を登録する
+3. `kido-agent pair` が動き、起動丸の本体が見つけに来るのを 10 分のあいだ待つ。起動ページにこの PC をまだ登録していなければ、そのあいだにスマホで登録する
 4. 操作フォルダ `~/Kido` を開く
 
 ### 公開前(リポジトリが非公開のあいだ)の入れ方
@@ -129,7 +129,9 @@ pwsh ci/package-windows.ps1 -Version dev -Arch amd64 -Out dist
   引数なしで起動すると `serve` になる。`kido-agent.exe` はコンソール版で、PowerShell は GUI 版の終わりを待たず出力も受け取らないので、CLI にはこちらを使う
 - 動いている常駐アプリの隣で試すときは、待ち受けを `KIDO_AGENT_API_ADDR` `KIDO_AGENT_CONTROL_ADDR`、鍵とログの置き場を `KIDO_AGENT_CONFIG_DIR` で変えられる
 - `ci/hub_stub.py` は本体の代わりをする試験用の道具。`pair` `list` `run <id>` を送る
-- CI(`.github/workflows/ci.yml`)は 3 つの OS でテストし、Windows と Mac ではインストールから取り除くまでを実物で通す
+- CI(`.github/workflows/ci.yml`)は 3 つの OS でテストし、Windows・Mac・Linux ではインストールから取り除くまでを実物で通す
+- 同梱の操作を入れ直したい(新しい同梱の操作を試したい)ときは、`~/Kido` を消してから `kido-agent serve` を起動する。
+  同梱の操作は `~/Kido` そのものが無いときだけ書き出すので、あるうちは何度起動しても変わらない
 
 ### リリース
 
