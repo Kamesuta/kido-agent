@@ -16,8 +16,9 @@ func cmdPair(out io.Writer) int {
 		reportControlError(out, err)
 		return 1
 	}
-	fmt.Fprintln(out, "起動丸の本体と組みます。")
-	fmt.Fprintln(out, "スマホで起動ページを開き、この PC を登録してください(10 分以内)。")
+	// 多くの人は起動ページに PC を登録済みなので、ここで「登録して」とは言わない。
+	// 待っていることだけを伝え、見つからずに終わったときに原因の候補を出す。
+	fmt.Fprintln(out, "起動丸の本体と組みます(10 分以内)。")
 	return waitPairing(out, st, func() (control.Status, error) {
 		return control.Call("GET", "/control/status")
 	}, time.Sleep)
@@ -29,14 +30,15 @@ func waitPairing(out io.Writer, st control.Status, get func() (control.Status, e
 	for {
 		switch {
 		case st.Paired:
-			fmt.Fprintf(out, "\r%-40s\n", "✓ 本体とつながりました")
+			// 待っている行(全角が多く幅を取る)を消し切るよう、空白で埋めて上書きする
+			fmt.Fprintf(out, "\r%-64s\n", "✓ 本体とつながりました")
 			return 0
 		case st.State != auth.StatePairing:
 			fmt.Fprintln(out)
 			printPairTimeout(out)
 			return 1
 		}
-		fmt.Fprintf(out, "\r  本体からの連絡を待っています… 残り %d:%02d ", st.Remaining/60, st.Remaining%60)
+		fmt.Fprintf(out, "\r  起動丸の本体が見つけに来るのを待っています… 残り %d:%02d ", st.Remaining/60, st.Remaining%60)
 		sleep(time.Second)
 		var err error
 		if st, err = get(); err != nil {
