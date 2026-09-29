@@ -13,6 +13,7 @@ $kido = Join-Path $env:USERPROFILE 'KidoButtons'
 $uninstall = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\KidoAgent'
 
 # 途中で落ちても常駐アプリを残さない。残ると CI の手順が出力の管を握られて終わらなくなる。
+$ok = $false
 try {
     # pair の待ちを本体の代わりに終わらせる
     $hub = Start-Process python -ArgumentList 'ci/hub_stub.py', 'pair' -PassThru -NoNewWindow
@@ -67,6 +68,16 @@ try {
     & "$dest\kido-agent.exe" check
     Assert ($LASTEXITCODE -eq 0) 'check が失敗した'
 
+    # このランナーの kido-agentd は昇格して動くので、権限降格の道が通っているはず。
+    # 目印付きの子が立ち上がっていること(=無限ループになっていないこと)を確かめる。
+    $plog = Get-Content -Raw -Encoding UTF8 "$env:USERPROFILE\.kido-agent\kido-agent.log"
+    if ($plog -match '管理者だったので') {
+        Assert ($plog -match '起動し直し済み') '権限降格の子が目印付きで起動していない(ループ防止)'
+        Write-Host '✓ 権限降格(一度きり・普通のユーザーで起動し直し)を確認'
+    } else {
+        Write-Host '! この環境では昇格していないため、権限降格の確認は省きます'
+    }
+
     # ログイン前対応(S4U 起動時タスク)。CI ランナーは管理者なので UAC は素通りする想定。
     # 環境によって昇格できないときは、登録の確認だけ省いて先へ進む。
     Write-Host '== ログイン前対応(boot on)'
@@ -100,6 +111,7 @@ try {
     Assert (-not (Test-Path $dest)) 'インストール先が残っている'
     Assert (Test-Path $kido) '~/KidoButtons は残すはず'
     Write-Host '✓ Windows の通し試験に通りました'
+    $ok = $true
 } finally {
     cmd /c "schtasks /end /tn KidoAgent >nul 2>nul"
     cmd /c "schtasks /delete /tn KidoAgent /f >nul 2>nul"
@@ -107,3 +119,5 @@ try {
     Write-Host '--- ログ ---'
     Get-Content -Encoding UTF8 "$env:USERPROFILE\.kido-agent\kido-agent.log" -ErrorAction SilentlyContinue
 }
+# 後片付けの schtasks は終了コードを汚すので、成否は $ok で決める。
+if ($ok) { exit 0 } else { exit 1 }
