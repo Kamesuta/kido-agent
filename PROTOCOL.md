@@ -8,6 +8,12 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
   - 本体が要求を送り、常駐アプリが答える
   - 要求は `Connection: close` にして `Content-Length` を付ける。応答は、本文を読み切ったら接続を閉じる
   - 本文は UTF-8 の JSON
+- **POST には必ず `Content-Type: application/json` を付ける**(`; charset=utf-8` などの付け足しは可)
+- 要求に **`Host` を付けない**か、付けるなら IP アドレス(`192.168.1.20:47821` `[fe80::1]:47821` など)にする。
+  `Origin` と `Sec-Fetch-Site` は付けない
+- ブラウザの中のページからの要求を止めるため、常駐アプリは上から外れる要求を、中身を見る前に断る
+  - `Origin` か `Sec-Fetch-Site` がある、または `Host` が IP アドレスでない(名前): 403 `{"ok":false,"error":"forbidden"}`
+  - POST の `Content-Type` が `application/json` でない・無い: 415 `{"ok":false,"error":"unsupported_media_type"}`
 - 応答の本文は **4096 バイト以内**。常駐アプリは、超えないように一覧を切り詰める(下の「上限」)
 - 本体は 1 回の要求に 3 秒の時間切れを持つ
 

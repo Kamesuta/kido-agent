@@ -27,7 +27,9 @@ def sign(*parts: bytes) -> str:
 
 def request(path, body=None):
     data = None if body is None else json.dumps(body).encode()
-    req = urllib.request.Request(BASE + path, data=data, method="GET" if data is None else "POST")
+    # 本体と同じく POST には application/json を付ける(無いと常駐アプリが断る)
+    headers = {} if data is None else {"Content-Type": "application/json"}
+    req = urllib.request.Request(BASE + path, data=data, headers=headers, method="GET" if data is None else "POST")
     try:
         with urllib.request.urlopen(req, timeout=3) as res:
             return res.status, res.read(), res.headers.get("X-Kido-Sig")

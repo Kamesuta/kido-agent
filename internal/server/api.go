@@ -20,7 +20,7 @@ func (a *agent) apiHandler() http.Handler {
 	mux.HandleFunc("POST /v1/pair", a.handlePair)
 	mux.HandleFunc("POST /v1/list", a.handleList)
 	mux.HandleFunc("POST /v1/run", a.handleRun)
-	return mux
+	return guardAPI(mux)
 }
 
 func (a *agent) handleHello(w http.ResponseWriter, r *http.Request) {

@@ -17,9 +17,14 @@ type apiResult struct {
 	sig    string
 }
 
+// call は本体と同じ形(Host なし、POST は application/json)で要求を送る。
 func call(t *testing.T, h http.Handler, method, path, body string) apiResult {
 	t.Helper()
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req.Host = ""
+	if method == "POST" {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	data, _ := io.ReadAll(rec.Body)
