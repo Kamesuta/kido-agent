@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"kido-agent/internal/control"
+
+	"golang.org/x/sys/windows"
 )
 
 //go:embed register.ps1 unregister.ps1
@@ -37,8 +39,9 @@ func enable(out io.Writer) int {
 	control.Call("POST", "/control/stop")
 	waitPortFree()
 
-	if code, err := runElevated(out, "register.ps1", "-Exe", exe, "-User", user); err != nil || code != 0 {
-		fmt.Fprintf(out, "✗ 起動時タスクを登録できませんでした(終了コード %d): %v\n", code, err)
+	if msg, err := runElevated("register.ps1", "-Exe", exe, "-User", user); err != nil {
+		fmt.Fprintln(out, "✗ 起動時タスクを登録できませんでした:")
+		fmt.Fprintln(out, indent(msg))
 		return 1
 	}
 	// タスクが待ち受け役として立ち上がるのを待つ。
@@ -56,8 +59,9 @@ func enable(out io.Writer) int {
 func disable(out io.Writer) int {
 	exe, _ := daemonPath()
 	fmt.Fprintln(out, "ログイン前には動かさないようにします。管理者の確認(UAC)が出たら「はい」を押してください。")
-	if code, err := runElevated(out, "unregister.ps1"); err != nil || code != 0 {
-		fmt.Fprintf(out, "✗ 起動時タスクを消せませんでした: %v\n", err)
+	if msg, err := runElevated("unregister.ps1"); err != nil {
+		fmt.Fprintln(out, "✗ 起動時タスクを消せませんでした:")
+		fmt.Fprintln(out, indent(msg))
 		return 1
 	}
 	// タスク側の待ち受け役を止め、ログイン中なら普通の常駐として起こし直す。
@@ -104,37 +108,58 @@ func whoami() string {
 	return strings.TrimSpace(string(out))
 }
 
-// runElevated は埋め込んだ PowerShell を管理者で実行し、終了コードを返す。
-func runElevated(out io.Writer, script string, args ...string) (int, error) {
-	data, err := scripts.ReadFile(script)
-	if err != nil {
-		return -1, err
+// runElevated は埋め込んだ PowerShell を管理者の権限で実行する。すでに昇格して
+// いれば(CI ランナーなど)そのまま実行し、していなければ UAC で昇格する。
+// 失敗したときは、スクリプトの出力(例外メッセージ)を err と一緒に返す。
+func runElevated(script string, args ...string) (output string, err error) {
+	data, e := scripts.ReadFile(script)
+	if e != nil {
+		return "", e
 	}
 	tmp := filepath.Join(os.TempDir(), "kido-"+script)
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
-		return -1, err
+	if e := os.WriteFile(tmp, data, 0o600); e != nil {
+		return "", e
 	}
 	defer os.Remove(tmp)
-	// Start-Process -Verb RunAs で UAC を出し、-Wait で終わるのを待ち、終了コードを取る。
-	argList := append([]string{"-NoProfile", "-ExecutionPolicy", "Bypass", "-File", tmp}, args...)
-	quoted := make([]string, len(argList))
-	for i, a := range argList {
-		quoted[i] = "'" + strings.ReplaceAll(a, "'", "''") + "'"
+
+	var cmd *exec.Cmd
+	if isElevated() {
+		// すでに管理者。RunAs を挟むと(UAC を切った環境で)昇格の段が空振りする
+		// ことがあるので、同じプロセスでそのまま実行する。
+		psArgs := append([]string{"-NoProfile", "-ExecutionPolicy", "Bypass", "-File", tmp}, args...)
+		cmd = exec.Command("powershell.exe", psArgs...)
+	} else {
+		// 管理者でない。UAC を出して昇格し、終わるのを待って終了コードを引き継ぐ。
+		argList := append([]string{"-NoProfile", "-ExecutionPolicy", "Bypass", "-File", tmp}, args...)
+		quoted := make([]string, len(argList))
+		for i, a := range argList {
+			quoted[i] = "'" + strings.ReplaceAll(a, "'", "''") + "'"
+		}
+		ps := fmt.Sprintf(
+			"$p = Start-Process powershell -Verb RunAs -Wait -PassThru -ArgumentList %s; exit $p.ExitCode",
+			strings.Join(quoted, ","))
+		cmd = exec.Command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps)
 	}
-	ps := fmt.Sprintf(
-		"$p = Start-Process powershell -Verb RunAs -Wait -PassThru -ArgumentList %s; exit $p.ExitCode",
-		strings.Join(quoted, ","))
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps)
+	cmd.SysProcAttr = hidden()
 	var buf bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &buf, &buf
 	err = cmd.Run()
-	if buf.Len() > 0 {
-		fmt.Fprint(out, buf.String())
+	out := strings.TrimSpace(buf.String())
+	if err != nil && out == "" {
+		out = err.Error()
 	}
-	if ee, ok := err.(*exec.ExitError); ok {
-		return ee.ExitCode(), nil // スクリプト側の終了コード(0 以外は失敗)
+	return out, err
+}
+
+// isElevated は今のプロセスが管理者の権限で動いているか。
+func isElevated() bool { return windows.GetCurrentProcessToken().IsElevated() }
+
+// indent はメッセージを字下げして見やすくする。
+func indent(s string) string {
+	if s == "" {
+		return "    (詳細なし)"
 	}
-	return 0, err
+	return "    " + strings.ReplaceAll(s, "\n", "\n    ")
 }
 
 func startHelper(exe string) {

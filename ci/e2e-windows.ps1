@@ -78,27 +78,32 @@ try {
         Write-Host '! この環境では昇格していないため、権限降格の確認は省きます'
     }
 
-    # ログイン前対応(S4U 起動時タスク)。CI ランナーは管理者なので UAC は素通りする想定。
-    # 環境によって昇格できないときは、登録の確認だけ省いて先へ進む。
+    # ログイン前対応(S4U 起動時タスク)。CI ランナーは管理者なので、boot on は
+    # RunAs を挟まず同じプロセスで登録する。実際に登録→起動→権限降格→boot off まで通す。
     Write-Host '== ログイン前対応(boot on)'
     # ここまでの待ち受け役・手足役をいったん止めて、素の状態から試す。
     Get-Process kido-agentd -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep 2
     & "$dest\kido-agent.exe" boot on 2>&1 | Write-Host
-    Start-Sleep 5
+    Start-Sleep 6
     cmd /c "schtasks /query /tn KidoAgent >nul 2>nul"
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host 'S4U タスクの登録を確認'
+    Assert ($LASTEXITCODE -eq 0) 'boot on で S4U 起動時タスクが登録されなかった'
+    Write-Host 'S4U タスクの登録を確認'
+    # タスクは管理者(High)で起こされ、プロセス側で権限を下げて起動し直す。
+    # 起動し直した子が「普通のユーザー」で動いていることをログで確かめる。
+    $log = ''
+    foreach ($i in 1..30) {
         $log = Get-Content -Encoding UTF8 "$env:USERPROFILE\.kido-agent\kido-agent.log" -Raw
-        Assert ($log -match '普通のユーザー') 'ログに権限降格が見えない'
-        & "$dest\kido-agent.exe" boot off
-        Start-Sleep 3
-        cmd /c "schtasks /query /tn KidoAgent >nul 2>nul"
-        Assert ($LASTEXITCODE -ne 0) 'boot off で起動時タスクが消えない'
-        Write-Host '✓ ログイン前対応(S4U・権限降格)を確認'
-    } else {
-        Write-Host '! この環境では起動時タスクを登録できませんでした(昇格不可のためスキップ)'
+        if ($log -match '普通のユーザー') { break }
+        Start-Sleep 1
     }
+    Assert ($log -match '普通のユーザー') 'ログに権限降格(普通のユーザー)が見えない'
+    Write-Host '✓ S4U タスクが普通のユーザーの権限で動いていることを確認'
+    & "$dest\kido-agent.exe" boot off
+    Start-Sleep 3
+    cmd /c "schtasks /query /tn KidoAgent >nul 2>nul"
+    Assert ($LASTEXITCODE -ne 0) 'boot off で起動時タスクが消えない'
+    Write-Host '✓ ログイン前対応(S4U・権限降格・boot off)を確認'
 
     # 更新(入れ直し)では組み直さない
     Get-Content -Raw -Encoding UTF8 install/install.ps1 | Invoke-Expression
