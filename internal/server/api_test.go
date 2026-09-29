@@ -154,3 +154,20 @@ func TestControlRequiresToken(t *testing.T) {
 		t.Fatalf("正しい合言葉が通らない: %+v", r)
 	}
 }
+
+// 合言葉の比較は、空の合言葉・長さ違い・1 文字違いをどれも通さない。
+func TestControlTokenCompare(t *testing.T) {
+	ta := newTestAgent(t)
+	for _, bad := range []string{"", "test-toke", "test-tokenX", "test-tokeN"} {
+		if ta.tokenOK(bad) {
+			t.Errorf("%q が通った", bad)
+		}
+	}
+	if !ta.tokenOK("test-token") {
+		t.Fatal("正しい合言葉が通らない")
+	}
+	ta.token = ""
+	if ta.tokenOK("") {
+		t.Fatal("合言葉が空なのに空の要求が通った")
+	}
+}

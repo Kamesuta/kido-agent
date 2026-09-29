@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -66,12 +67,18 @@ func (a *agent) controlHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 合言葉が空、または合わなければ断る。同じ PC の別ユーザーからのなりすましと、
 		// ブラウザの中のページからの要求(合言葉を知りようがない)を止める。
-		if a.token == "" || r.Header.Get(control.Header) != a.token {
+		// 比べるのにかかる時間から合言葉を 1 文字ずつ当てられないよう、時間の一定な比較にする。
+		if !a.tokenOK(r.Header.Get(control.Header)) {
 			writeError(w, http.StatusForbidden, "forbidden")
 			return
 		}
 		mux.ServeHTTP(w, r)
 	})
+}
+
+// tokenOK は手元の窓口の合言葉が合うか。空の合言葉(まだ書けていない)は誰も通さない。
+func (a *agent) tokenOK(got string) bool {
+	return a.token != "" && subtle.ConstantTimeCompare([]byte(got), []byte(a.token)) == 1
 }
 
 func (a *agent) writeStatus(w http.ResponseWriter) {
