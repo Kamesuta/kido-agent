@@ -16,7 +16,10 @@ type Action struct {
 	Icon     string
 	Confirm  *string // nil は「確認なし」、"" は「本文なしで確認する」
 	Broken   bool
-	Dir      string
+	// BeforeLogin が true の操作は、誰もログインしていない(手足役がいない)ときも
+	// 画面なしで動かせる。既定は false(ログインしてから使う)。
+	BeforeLogin bool
+	Dir         string
 	Run      string   // 実行するファイル名(Dir の中)
 	Invalid  string   // ID として使えない理由。あれば本体へは送らない
 	Problems []string // 押せない理由(Broken のとき)
@@ -83,7 +86,22 @@ func loadAction(dir, goos string) Action {
 		a.fail("実行できるファイルが 2 つ以上あります("+strings.Join(runnables, "、")+")",
 			"どれを動かすか kido.toml に書いてください。例: run = \""+runnables[0]+"\"")
 	}
+	// ログイン前に動かす約束なのに、画面がいるものを指していたら気づけるようにする。
+	// ログインしていないと画面が無く、ショートやアプリは開けないことが多い。
+	if a.BeforeLogin && !a.Broken && needsScreen(a.Run) {
+		a.warn("before_login = true ですが " + a.Run +
+			" は画面がいるので、ログイン前は開けないことがあります")
+	}
 	return a
+}
+
+// needsScreen は、動かすのに画面(ログイン中のデスクトップ)がいりがちな種類か。
+func needsScreen(file string) bool {
+	switch strings.ToLower(filepath.Ext(file)) {
+	case ".lnk", ".app", ".command", ".desktop":
+		return true
+	}
+	return false
 }
 
 // pickRun は kido.toml の run を確かめる。フォルダの外を指されると、

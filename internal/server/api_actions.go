@@ -24,7 +24,7 @@ func (a *agent) handleList(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.logf("操作フォルダを読めません: %v", err)
 	}
-	body, _ := actions.ListBody(list)
+	body, _ := actions.ListBody(list, true)
 	writeBody(w, http.StatusOK, body, auth.Sign(key, "list-ok", req.Nonce, string(body)))
 }
 

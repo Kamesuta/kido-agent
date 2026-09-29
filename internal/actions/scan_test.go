@@ -129,7 +129,7 @@ func TestIDRules(t *testing.T) {
 	if a := scanOne(t, root, "windows"); a.Invalid == "" {
 		t.Fatal("長すぎる ID は送らない")
 	}
-	if body, _ := ListBody([]Action{{ID: "x", Invalid: "bad"}}); string(body) != `{"actions":[]}` {
+	if body, _ := ListBody([]Action{{ID: "x", Invalid: "bad"}}, true); string(body) != `{"actions":[]}` {
 		t.Fatal(string(body))
 	}
 }
@@ -147,3 +147,36 @@ func TestScanMissingDir(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestBeforeLoginToml(t *testing.T) {
+	root := t.TempDir()
+	d := mkAction(t, root, "10_sleep", "sleep.ps1")
+	writeFile(t, d+"/kido.toml", "before_login = true\n")
+	a := scanOne(t, root, "windows")
+	if !a.BeforeLogin || a.Broken || len(a.Warnings) != 0 {
+		t.Fatalf("%+v", a)
+	}
+	// 既定は false(kido.toml が無い)
+	root2 := t.TempDir()
+	mkAction(t, root2, "20_lock", "lock.ps1")
+	if scanOne(t, root2, "windows").BeforeLogin {
+		t.Fatal("既定は false のはず")
+	}
+}
+
+func TestBeforeLoginScreenWarning(t *testing.T) {
+	root := t.TempDir()
+	d := mkAction(t, root, "50_game", "game.lnk")
+	writeFile(t, d+"/kido.toml", "before_login = true\n")
+	a := scanOne(t, root, "windows")
+	if !a.BeforeLogin || len(a.Warnings) != 1 || !contains(a.Warnings[0], "画面がいる") {
+		t.Fatalf("%+v", a)
+	}
+	// before_login でなければ警告しない
+	writeFile(t, d+"/kido.toml", "")
+	if a := scanOne(t, root, "windows"); len(a.Warnings) != 0 {
+		t.Fatalf("%+v", a)
+	}
+}
+
+func contains(s, sub string) bool { return strings.Contains(s, sub) }

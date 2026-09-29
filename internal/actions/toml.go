@@ -14,8 +14,9 @@ import (
 type kidoToml struct {
 	Name    *string `toml:"name"`
 	Icon    *string `toml:"icon"`
-	Confirm *string `toml:"confirm"`
-	Run     *string `toml:"run"`
+	Confirm     *string `toml:"confirm"`
+	Run         *string `toml:"run"`
+	BeforeLogin *bool   `toml:"before_login"`
 }
 
 var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
@@ -40,7 +41,7 @@ func readToml(a *Action) kidoToml {
 		return kidoToml{}
 	}
 	for _, k := range meta.Undecoded() {
-		a.warn("kido.toml の知らないキーは無視します: " + k.String() + "(使えるのは name icon confirm run)")
+		a.warn("kido.toml の知らないキーは無視します: " + k.String() + "(使えるのは name icon confirm run before_login)")
 	}
 	applyToml(a, cfg)
 	return cfg
@@ -64,5 +65,8 @@ func applyToml(a *Action, cfg kidoToml) {
 			a.warn("confirm が長いので 200 文字で切ります")
 		}
 		a.Confirm = &c
+	}
+	if cfg.BeforeLogin != nil {
+		a.BeforeLogin = *cfg.BeforeLogin
 	}
 }

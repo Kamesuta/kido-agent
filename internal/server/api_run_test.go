@@ -83,7 +83,7 @@ func TestListLimits(t *testing.T) {
 		t.Fatal("名前は 32 文字に切る")
 	}
 	list, _ := actions.Scan(ta.actionsDir, ta.goos)
-	body, sent := actions.ListBody(list)
+	body, sent := actions.ListBody(list, true)
 	if sent == 0 || sent >= actions.MaxActions || string(body) != res.body {
 		t.Fatalf("sent=%d", sent)
 	}

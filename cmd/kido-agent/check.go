@@ -97,7 +97,7 @@ func checkActions(out io.Writer, dir, goos string) (bad bool) {
 	if valid == 0 {
 		fmt.Fprintln(out, "! 操作がありません。~/KidoButtons にフォルダを作り、ショートカットやスクリプトを置いてください")
 	}
-	if _, sent := actions.ListBody(list); sent < valid {
+	if _, sent := actions.ListBody(list, true); sent < valid {
 		fmt.Fprintf(out, "! 本体に送れるのは先頭の %d 個までです(%d 個まで・合わせて %d バイトまで)。残りは表示されません\n",
 			sent, actions.MaxActions, actions.MaxBodyBytes)
 	}
