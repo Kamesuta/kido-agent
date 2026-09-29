@@ -196,3 +196,25 @@ func TestRunRequireLoginWithOSSessionNoHelper(t *testing.T) {
 		t.Fatalf("手足役がいないので自分で動かすはず: %v", ta.launched)
 	}
 }
+
+// Windows で Run キーの側(ログイン中の画面)が待ち受け役になり、起動時タスクの側
+// (セッション 0)が手足役として取りに来ていても、操作は待ち受け役が自分で動かす。
+// 手足役に流すと、誰にも見えない所で動いてしまう。
+func TestRunPrefersSelfWhenListenerInSession(t *testing.T) {
+	ta := pairedAgent(t)
+	ta.osSession = func() bool { return true }
+	ta.hub.mu.Lock()
+	ta.hub.lastPoll = ta.now()
+	ta.hub.mu.Unlock()
+	if ta.helperActive() {
+		t.Fatal("待ち受け役がログイン中なら手足役に流さないはず")
+	}
+	mkAction(t, ta.actionsDir, "50_note", "note.ps1")
+	_, n := ta.hello(t)
+	if r := call(t, ta.apiHandler(), "POST", "/v1/run", runReq(n, "50_note")); r.status != 200 {
+		t.Fatalf("%+v", r)
+	}
+	if len(ta.launched) != 1 || ta.launched[0] != "50_note/note.ps1" {
+		t.Fatalf("自分で動かすはず: %v", ta.launched)
+	}
+}

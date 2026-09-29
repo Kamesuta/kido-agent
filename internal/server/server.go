@@ -60,9 +60,11 @@ func newAgent(keyPath, actionsDir, goos, version string, key []byte) *agent {
 // ログイン中でもずっと押せない。
 func (a *agent) sessionActive() bool { return a.hub.active() || a.osSession() }
 
-// helperActive は手足役が取りに来ているか。操作をどちらで動かすかはこれで決める
-// (ログイン中でも手足役のいない Mac・Linux では、待ち受け役が自分で動かす)。
-func (a *agent) helperActive() bool { return a.hub.active() }
+// helperActive は操作を手足役に流すか。手足役が取りに来ていても、待ち受け役が
+// OS の決まりでログイン中(Mac・Linux、Windows ならログイン中の画面にいる)なら
+// 自分で動かす。Windows で Run キーの側が先に窓口を取り、起動時タスクの側
+// (セッション 0)が手足役になったとき、操作が誰にも見えない所で動かないようにする。
+func (a *agent) helperActive() bool { return a.hub.active() && !a.osSession() }
 
 // execute は操作を動かす。手足役がいればそちらへ流し(ログイン中の見た目・窓で動く)、
 // いなければ待ち受け役が自分で画面なしに動かす。
