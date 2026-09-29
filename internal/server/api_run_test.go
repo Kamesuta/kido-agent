@@ -116,7 +116,7 @@ func TestRunViaHelperWhenLoggedIn(t *testing.T) {
 		j := ta.hub.poll()
 		got <- j
 		if j != nil {
-			ta.hub.complete(j.ID, "")
+			ta.hub.complete(j.ID, helperResult{})
 		}
 	}()
 	_, n := ta.hello(t)
@@ -126,7 +126,7 @@ func TestRunViaHelperWhenLoggedIn(t *testing.T) {
 	}
 	select {
 	case j := <-got:
-		if j == nil || j.ID != "20_lock" {
+		if j == nil || j.ID != "20_lock#1" || j.Wait {
 			t.Fatalf("手足役に流れていない: %+v", j)
 		}
 	case <-time.After(2 * time.Second):

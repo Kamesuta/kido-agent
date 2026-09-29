@@ -1,8 +1,12 @@
 package server
 
 import (
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -79,3 +83,42 @@ func writeFile(t *testing.T, path, content string) {
 }
 
 var testKey = []byte("0123456789abcdef0123456789abcdef")
+
+// serveReal は本物の接続で試すための待ち受け。時間切れを短くして、
+// wait がそれを越えても返事できることを確かめる。
+func serveReal(t *testing.T, ta *testAgent) string {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := newServer(ta.apiHandler())
+	s.ReadTimeout, s.WriteTimeout = 100*time.Millisecond, 100*time.Millisecond
+	go s.Serve(ln)
+	t.Cleanup(func() { s.Close() })
+	return "http://" + ln.Addr().String()
+}
+
+func postRun(base, nonce, id string, timeout time.Duration) (string, error) {
+	c := &http.Client{Timeout: timeout}
+	res, err := c.Post(base+"/v1/run", "application/json", strings.NewReader(runReq(nonce, id)))
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	b, err := io.ReadAll(res.Body)
+	return string(b), err
+}
+
+func waitLog(t *testing.T, logs chan string, want string) {
+	for {
+		select {
+		case l := <-logs:
+			if strings.Contains(l, want) {
+				return
+			}
+		case <-time.After(2 * time.Second):
+			t.Errorf("ログに %q が出ない", want)
+			return
+		}
+	}
+}

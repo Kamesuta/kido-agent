@@ -1,7 +1,9 @@
 package server
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -14,6 +16,7 @@ type helperHub struct {
 	pending  chan *helperJob       // 待ち受け役 → 手足役に渡す仕事
 	waiting  map[string]*helperJob // 渡して結果待ちの仕事(id で引く)
 	lastPoll time.Time             // 手足役が最後に取りに来た時刻(いるかの目安)
+	seq      int                   // 仕事の番号の元
 	now      func() time.Time
 
 	sessionGrace  time.Duration // これを過ぎて取りに来なければ「いない」
@@ -22,12 +25,20 @@ type helperHub struct {
 	pollHold      time.Duration // 1 回のロングポーリングを保つ長さ
 }
 
-// helperJob は手足役に動かしてもらう 1 件。
+// helperJob は手足役に動かしてもらう 1 件。ID は「操作の ID#番号」で 1 件ごとに違う。
+// wait の操作を待っている間に同じ操作がまた押されても、結果を取り違えないため。
 type helperJob struct {
-	ID     string      `json:"id"`
-	Dir    string      `json:"dir"`
-	Run    string      `json:"run"`
-	result chan string // 空文字は成功、それ以外はエラーの説明
+	ID     string `json:"id"`
+	Dir    string `json:"dir"`
+	Run    string `json:"run"`
+	Wait   bool   `json:"wait"` // 終わるまで待って終了コードを返してほしいか
+	result chan helperResult
+}
+
+// helperResult は手足役から返った結果。Err が空なら動かせた(wait なら Code が終了コード)。
+type helperResult struct {
+	Code int
+	Err  string
 }
 
 func newHelperHub(now func() time.Time) *helperHub {
@@ -71,38 +82,57 @@ func (h *helperHub) poll() *helperJob {
 }
 
 // complete は手足役から返ってきた結果を、待っている dispatch に渡す。
-func (h *helperHub) complete(id, errMsg string) {
+// 待っている側がもういない(相手が接続を切った)なら、結果は捨てる。
+func (h *helperHub) complete(id string, res helperResult) {
 	h.mu.Lock()
 	j := h.waiting[id]
 	delete(h.waiting, id)
 	h.mu.Unlock()
 	if j != nil {
 		select {
-		case j.result <- errMsg:
+		case j.result <- res:
 		default:
 		}
 	}
 }
 
-// dispatch は 1 件を手足役に流し、実行の結果を待つ。手足役が拾わない・結果が
-// 返らないときは、その旨のエラーを返す。
-func (h *helperHub) dispatch(id, dir, run string) error {
-	j := &helperJob{ID: id, Dir: dir, Run: run, result: make(chan string, 1)}
+func (h *helperHub) forget(id string) {
+	h.mu.Lock()
+	delete(h.waiting, id)
+	h.mu.Unlock()
+}
+
+// dispatch は 1 件を手足役に流し、結果を待つ。wait でなければ「動かせたか」だけを
+// resultGrace まで待つ。wait なら終わるまで待ち、時間切れは持たない(長さの見積もりは
+// スクリプトを書いた人に任せる)。どちらも ctx が終われば(相手が切った)待つのをやめる。
+func (h *helperHub) dispatch(ctx context.Context, action, dir, run string, wait bool) (int, error) {
+	h.mu.Lock()
+	h.seq++
+	j := &helperJob{ID: fmt.Sprintf("%s#%d", action, h.seq), Dir: dir, Run: run, Wait: wait,
+		result: make(chan helperResult, 1)}
+	h.mu.Unlock()
 	select {
 	case h.pending <- j:
 	case <-time.After(h.dispatchGrace):
-		return errNoHelper
+		return 0, errNoHelper
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
+	var limit <-chan time.Time // nil のままなら時間切れにならない
+	if !wait {
+		limit = time.After(h.resultGrace)
 	}
 	select {
-	case msg := <-j.result:
-		if msg != "" {
-			return errors.New(msg)
+	case r := <-j.result:
+		if r.Err != "" {
+			return 0, errors.New(r.Err)
 		}
-		return nil
-	case <-time.After(h.resultGrace):
-		h.mu.Lock()
-		delete(h.waiting, id)
-		h.mu.Unlock()
-		return errors.New("手足役からの結果が返りませんでした")
+		return r.Code, nil
+	case <-limit:
+		h.forget(j.ID)
+		return 0, errors.New("手足役からの結果が返りませんでした")
+	case <-ctx.Done():
+		h.forget(j.ID)
+		return 0, ctx.Err()
 	}
 }

@@ -44,6 +44,7 @@ func (a *agent) controlHandler() http.Handler {
 			ID    string `json:"id"`
 			OK    bool   `json:"ok"`
 			Error string `json:"error"`
+			Code  int    `json:"code"` // wait の仕事の終了コード
 		}
 		if readJSON(r, &res) != nil {
 			writeError(w, http.StatusBadRequest, "bad_request")
@@ -55,7 +56,7 @@ func (a *agent) controlHandler() http.Handler {
 		} else if msg == "" {
 			msg = "実行に失敗しました"
 		}
-		a.hub.complete(res.ID, msg)
+		a.hub.complete(res.ID, helperResult{Code: res.Code, Err: msg})
 		writeBody(w, http.StatusOK, []byte(`{"ok":true}`), "")
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -2,6 +2,7 @@
 package server
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -22,6 +23,7 @@ type agent struct {
 	token       string // 手元の窓口の合言葉(空なら誰も通さない)
 	now         func() time.Time
 	launch      func(a actions.Action) error
+	launchWait  func(a actions.Action) (int, error) // 終わるまで待ち、終了コードを返す
 	runDelay    time.Duration
 	after       func(d time.Duration, f func())
 	logf        func(format string, args ...any)
@@ -35,6 +37,7 @@ func newAgent(keyPath, actionsDir, goos, version string, key []byte) *agent {
 		version:     version,
 		now:         time.Now,
 		launch:      func(x actions.Action) error { return launch.Run(x.Dir, x.Run) },
+		launchWait:  func(x actions.Action) (int, error) { return launch.RunWait(x.Dir, x.Run) },
 		runDelay:    300 * time.Millisecond,
 		after:       func(d time.Duration, f func()) { time.AfterFunc(d, f) },
 		logf:        log.Printf,
@@ -55,7 +58,7 @@ func (a *agent) sessionActive() bool { return a.hub.active() }
 // いなければ待ち受け役が自分で画面なしに動かす(require_login でない操作だけここに来る)。
 func (a *agent) execute(t actions.Action, viaHelper bool) {
 	if viaHelper {
-		if err := a.hub.dispatch(t.ID, t.Dir, t.Run); err != nil {
+		if _, err := a.hub.dispatch(context.Background(), t.ID, t.Dir, t.Run, false); err != nil {
 			a.logf("手足役での実行に失敗しました: %s: %v", t.ID, err)
 		}
 		return
@@ -63,4 +66,13 @@ func (a *agent) execute(t actions.Action, viaHelper bool) {
 	if err := a.launch(t); err != nil {
 		a.logf("実行に失敗しました: %s: %v", t.ID, err)
 	}
+}
+
+// executeWait は execute の wait 版。終わるまで待って終了コードを返す。
+// ctx は手足役に流したときだけ効く(自分で動かした子は、相手が去っても最後まで待って回収する)。
+func (a *agent) executeWait(ctx context.Context, t actions.Action, viaHelper bool) (int, error) {
+	if viaHelper {
+		return a.hub.dispatch(ctx, t.ID, t.Dir, t.Run, true)
+	}
+	return a.launchWait(t)
 }

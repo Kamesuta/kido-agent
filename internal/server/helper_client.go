@@ -40,16 +40,32 @@ func runHelper() {
 			continue
 		}
 		fails = 0
-		var job struct{ ID, Dir, Run string }
+		var job struct {
+			ID, Dir, Run string
+			Wait         bool
+		}
 		if json.Unmarshal(data, &job) != nil || job.ID == "" {
 			continue // 空応答。つなぎ直す
 		}
-		errMsg := ""
-		if e := launch.Run(job.Dir, job.Run); e != nil {
-			errMsg = e.Error()
-		}
-		log.Printf("手足役: 実行しました %s (%s) err=%q", job.ID, job.Run, errMsg)
-		res, _ := json.Marshal(map[string]any{"id": job.ID, "ok": errMsg == "", "error": errMsg})
-		control.Do("POST", "/control/helper/result", res, 5*time.Second)
+		// 別の流れで動かし、すぐ次を取りに行く。wait の仕事を待っている間も取りに
+		// 行き続けないと、待ち受け役に「ログインしていない」と見なされてしまう。
+		go runJob(job.ID, job.Dir, job.Run, job.Wait)
 	}
+}
+
+// runJob は 1 件を動かして、結果を待ち受け役へ返す。
+func runJob(id, dir, run string, wait bool) {
+	code, err := 0, error(nil)
+	if wait {
+		code, err = launch.RunWait(dir, run)
+	} else {
+		err = launch.Run(dir, run)
+	}
+	errMsg := ""
+	if err != nil {
+		errMsg = err.Error()
+	}
+	log.Printf("手足役: 実行しました %s (%s) code=%d err=%q", id, run, code, errMsg)
+	res, _ := json.Marshal(map[string]any{"id": id, "ok": errMsg == "", "error": errMsg, "code": code})
+	control.Do("POST", "/control/helper/result", res, 5*time.Second)
 }

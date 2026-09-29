@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -17,16 +18,19 @@ func fastHub() *helperHub {
 func TestHubDispatchToPoller(t *testing.T) {
 	h := fastHub()
 	done := make(chan error, 1)
-	go func() { done <- h.dispatch("10_sleep", "/dir", "sleep.ps1") }()
+	go func() {
+		_, err := h.dispatch(context.Background(), "10_sleep", "/dir", "sleep.ps1", false)
+		done <- err
+	}()
 	// 手足役が取りに来る
 	j := h.poll()
-	if j == nil || j.ID != "10_sleep" || j.Run != "sleep.ps1" {
+	if j == nil || j.ID != "10_sleep#1" || j.Run != "sleep.ps1" {
 		t.Fatalf("仕事が渡らない: %+v", j)
 	}
 	if !h.active() {
 		t.Fatal("取りに来たのに active でない")
 	}
-	h.complete("10_sleep", "") // 成功を返す
+	h.complete(j.ID, helperResult{}) // 成功を返す
 	if err := <-done; err != nil {
 		t.Fatalf("成功のはず: %v", err)
 	}
@@ -35,7 +39,7 @@ func TestHubDispatchToPoller(t *testing.T) {
 func TestHubDispatchNoHelper(t *testing.T) {
 	h := fastHub()
 	// 誰も取りに来ない → dispatchGrace で errNoHelper
-	if err := h.dispatch("x", "/d", "r"); err != errNoHelper {
+	if _, err := h.dispatch(context.Background(), "x", "/d", "r", false); err != errNoHelper {
 		t.Fatalf("手足役なしのはず: %v", err)
 	}
 }
@@ -43,9 +47,12 @@ func TestHubDispatchNoHelper(t *testing.T) {
 func TestHubResultError(t *testing.T) {
 	h := fastHub()
 	done := make(chan error, 1)
-	go func() { done <- h.dispatch("x", "/d", "r") }()
-	h.poll()
-	h.complete("x", "起動に失敗")
+	go func() {
+		_, err := h.dispatch(context.Background(), "x", "/d", "r", false)
+		done <- err
+	}()
+	j := h.poll()
+	h.complete(j.ID, helperResult{Err: "起動に失敗"})
 	if err := <-done; err == nil || err.Error() != "起動に失敗" {
 		t.Fatalf("エラーが返るはず: %v", err)
 	}
@@ -79,4 +86,29 @@ func TestSessionGrace(t *testing.T) {
 	if h.active() {
 		t.Fatal("90 秒を過ぎたら active でない")
 	}
+}
+
+// wait の仕事は resultGrace を過ぎても待ち続け、相手が去ったら(ctx)やめて控えを消す。
+func TestHubWaitHasNoTimeoutButStopsOnCancel(t *testing.T) {
+	h := fastHub()
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { _, err := h.dispatch(ctx, "x", "/d", "r", true); done <- err }()
+	j := h.poll()
+	select {
+	case err := <-done:
+		t.Fatalf("wait なのに時間切れになった: %v", err)
+	case <-time.After(2 * h.resultGrace):
+	}
+	cancel()
+	if err := <-done; err != context.Canceled {
+		t.Fatalf("取り消しで戻るはず: %v", err)
+	}
+	h.mu.Lock()
+	left := len(h.waiting)
+	h.mu.Unlock()
+	if left != 0 {
+		t.Fatal("待ちの控えが残っている")
+	}
+	h.complete(j.ID, helperResult{Code: 1}) // 後から来た結果は捨てるだけ
 }
