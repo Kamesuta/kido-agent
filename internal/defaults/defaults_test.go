@@ -68,17 +68,17 @@ func TestDefaultsUseHome(t *testing.T) {
 	}
 }
 
-func TestBundledBeforeLogin(t *testing.T) {
+func TestBundledRequireLogin(t *testing.T) {
 	for _, goos := range []string{"windows", "darwin", "linux"} {
 		dir := filepath.Join(t.TempDir(), "KidoButtons")
 		if _, err := Write(dir, goos); err != nil {
 			t.Fatal(err)
 		}
 		list, _ := actions.Scan(dir, goos)
-		want := map[string]bool{"10_sleep": true, "20_lock": false, "30_restart": true, "40_shutdown": true}
+		want := map[string]bool{"10_sleep": false, "20_lock": true, "30_restart": false, "40_shutdown": false}
 		for _, a := range list {
-			if a.BeforeLogin != want[a.ID] {
-				t.Errorf("%s/%s before_login=%v", goos, a.ID, a.BeforeLogin)
+			if a.RequireLogin != want[a.ID] {
+				t.Errorf("%s/%s require_login=%v", goos, a.ID, a.RequireLogin)
 			}
 			if a.Broken || len(a.Warnings) > 0 {
 				t.Errorf("%s/%s に問題: %+v", goos, a.ID, a)
