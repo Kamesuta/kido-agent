@@ -27,12 +27,17 @@ type helperHub struct {
 
 // helperJob は手足役に動かしてもらう 1 件。ID は「操作の ID#番号」で 1 件ごとに違う。
 // wait の操作を待っている間に同じ操作がまた押されても、結果を取り違えないため。
+//
+// 渡すのは操作の ID だけで、フォルダや実行するファイルは渡さない。手足役は
+// 自分の操作フォルダから引き直して動かす。手元の窓口を先に取った別の利用者の
+// 偽の待ち受け役が、手足役に好きなパスを実行させられないようにするため。
+// wait と require_login は、手足役が引き直したものと食い違わないかを見るために添える。
 type helperJob struct {
-	ID     string `json:"id"`
-	Dir    string `json:"dir"`
-	Run    string `json:"run"`
-	Wait   bool   `json:"wait"` // 終わるまで待って終了コードを返してほしいか
-	result chan helperResult
+	ID           string `json:"id"`
+	Action       string `json:"action"`
+	Wait         bool   `json:"wait"` // 終わるまで待って終了コードを返してほしいか
+	RequireLogin bool   `json:"require_login"`
+	result       chan helperResult
 }
 
 // helperResult は手足役から返った結果。Err が空なら動かせた(wait なら Code が終了コード)。
@@ -109,11 +114,11 @@ func (h *helperHub) forget(id string) {
 // dispatch は 1 件を手足役に流し、結果を待つ。wait でなければ「動かせたか」だけを
 // resultGrace まで待つ。wait なら終わるまで待ち、時間切れは持たない(長さの見積もりは
 // スクリプトを書いた人に任せる)。どちらも ctx が終われば(相手が切った)待つのをやめる。
-func (h *helperHub) dispatch(ctx context.Context, action, dir, run string, wait bool) (int, error) {
+func (h *helperHub) dispatch(ctx context.Context, action string, requireLogin, wait bool) (int, error) {
 	h.mu.Lock()
 	h.seq++
-	j := &helperJob{ID: fmt.Sprintf("%s#%d", action, h.seq), Dir: dir, Run: run, Wait: wait,
-		result: make(chan helperResult, 1)}
+	j := &helperJob{ID: fmt.Sprintf("%s#%d", action, h.seq), Action: action, Wait: wait,
+		RequireLogin: requireLogin, result: make(chan helperResult, 1)}
 	h.mu.Unlock()
 	select {
 	case h.pending <- j:

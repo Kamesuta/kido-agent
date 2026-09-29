@@ -19,12 +19,12 @@ func TestHubDispatchToPoller(t *testing.T) {
 	h := fastHub()
 	done := make(chan error, 1)
 	go func() {
-		_, err := h.dispatch(context.Background(), "10_sleep", "/dir", "sleep.ps1", false)
+		_, err := h.dispatch(context.Background(), "10_sleep", false, false)
 		done <- err
 	}()
 	// 手足役が取りに来る
 	j := h.poll(context.Background())
-	if j == nil || j.ID != "10_sleep#1" || j.Run != "sleep.ps1" {
+	if j == nil || j.ID != "10_sleep#1" || j.Action != "10_sleep" {
 		t.Fatalf("仕事が渡らない: %+v", j)
 	}
 	if !h.active() {
@@ -39,7 +39,7 @@ func TestHubDispatchToPoller(t *testing.T) {
 func TestHubDispatchNoHelper(t *testing.T) {
 	h := fastHub()
 	// 誰も取りに来ない → dispatchGrace で errNoHelper
-	if _, err := h.dispatch(context.Background(), "x", "/d", "r", false); err != errNoHelper {
+	if _, err := h.dispatch(context.Background(), "x", false, false); err != errNoHelper {
 		t.Fatalf("手足役なしのはず: %v", err)
 	}
 }
@@ -48,7 +48,7 @@ func TestHubResultError(t *testing.T) {
 	h := fastHub()
 	done := make(chan error, 1)
 	go func() {
-		_, err := h.dispatch(context.Background(), "x", "/d", "r", false)
+		_, err := h.dispatch(context.Background(), "x", false, false)
 		done <- err
 	}()
 	j := h.poll(context.Background())
@@ -93,7 +93,7 @@ func TestHubWaitHasNoTimeoutButStopsOnCancel(t *testing.T) {
 	h := fastHub()
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	go func() { _, err := h.dispatch(ctx, "x", "/d", "r", true); done <- err }()
+	go func() { _, err := h.dispatch(ctx, "x", false, true); done <- err }()
 	j := h.poll(context.Background())
 	select {
 	case err := <-done:

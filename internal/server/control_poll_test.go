@@ -45,7 +45,7 @@ func TestHelperPollOutlivesWriteTimeout(t *testing.T) {
 	got := make(chan string, 1)
 	go func() { b, _ := pollOnce(context.Background(), base); got <- b }()
 	time.Sleep(300 * time.Millisecond) // 窓口の時間切れ(100ms)を過ぎてから流す
-	go ta.hub.dispatch(context.Background(), "10_sleep", "/d", "s.ps1", false)
+	go ta.hub.dispatch(context.Background(), "10_sleep", false, false)
 	select {
 	case b := <-got:
 		var j helperJob
@@ -70,7 +70,7 @@ func TestHelperPollGoneDoesNotTakeJob(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	wctx, stop := context.WithTimeout(context.Background(), 2*time.Second)
 	defer stop()
-	if _, err := ta.hub.dispatch(wctx, "x", "/d", "r", true); err != errNoHelper {
+	if _, err := ta.hub.dispatch(wctx, "x", false, true); err != errNoHelper {
 		t.Fatalf("去った手足役に渡してはいけない: %v", err)
 	}
 }

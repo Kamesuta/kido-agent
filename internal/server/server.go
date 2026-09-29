@@ -67,7 +67,7 @@ func (a *agent) helperActive() bool { return a.hub.active() }
 // いなければ待ち受け役が自分で画面なしに動かす(require_login でない操作だけここに来る)。
 func (a *agent) execute(t actions.Action, viaHelper bool) {
 	if viaHelper {
-		if _, err := a.hub.dispatch(context.Background(), t.ID, t.Dir, t.Run, false); err != nil {
+		if _, err := a.hub.dispatch(context.Background(), t.ID, t.RequireLogin, false); err != nil {
 			a.logf("手足役での実行に失敗しました: %s: %v", t.ID, err)
 		}
 		return
@@ -81,7 +81,7 @@ func (a *agent) execute(t actions.Action, viaHelper bool) {
 // ctx は手足役に流したときだけ効く(自分で動かした子は、相手が去っても最後まで待って回収する)。
 func (a *agent) executeWait(ctx context.Context, t actions.Action, viaHelper bool) (int, error) {
 	if viaHelper {
-		return a.hub.dispatch(ctx, t.ID, t.Dir, t.Run, true)
+		return a.hub.dispatch(ctx, t.ID, t.RequireLogin, true)
 	}
 	return a.launchWait(t)
 }
