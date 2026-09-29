@@ -35,6 +35,8 @@ func newTestAgent(t *testing.T) *testAgent {
 	ta.token = "test-token"
 	ta.now = func() time.Time { return ta.clock }
 	ta.logf = t.Logf
+	// 動かしている OS に左右されないよう、既定は Windows と同じ「手足役だけで決める」。
+	ta.osSession = func() bool { return false }
 	ta.launch = func(a actions.Action) error {
 		ta.mu.Lock()
 		defer ta.mu.Unlock()

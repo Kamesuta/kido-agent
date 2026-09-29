@@ -25,7 +25,7 @@ type Status struct {
 	Remaining int    `json:"remaining"`
 	Paired    bool   `json:"paired"`
 	Version   string `json:"version"`
-	Session   bool   `json:"session"` // 手足役がいる(誰かがログインしている)か
+	Session   bool   `json:"session"` // 誰かがログインしているとみなせるか
 }
 
 // ErrNotRunning は待ち受け役に届かなかったことを表す(動いていない)。

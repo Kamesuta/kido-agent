@@ -45,7 +45,7 @@ func (a *agent) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	target, found := actions.Find(a.actionsDir, a.goos, req.ID)
-	session := a.sessionActive()
+	session, helper := a.sessionActive(), a.helperActive()
 	switch {
 	case !found:
 		writeError(w, http.StatusNotFound, "unknown_action")
@@ -59,7 +59,7 @@ func (a *agent) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if target.Wait {
-		a.runWaited(w, r, key, req.Nonce, target, session)
+		a.runWaited(w, r, key, req.Nonce, target, helper)
 		return
 	}
 	body := []byte(`{"ok":true}`)
@@ -68,21 +68,21 @@ func (a *agent) handleRun(w http.ResponseWriter, r *http.Request) {
 		f.Flush()
 	}
 	// スリープやシャットダウンを先に始めると返事が本体に届かないので、
-	// 送り切ってから少し待って動かす。ログイン中は手足役へ、そうでなければ自分で。
-	a.logf("実行します: %s (%s, helper=%v)", target.ID, target.Run, session)
-	a.after(a.runDelay, func() { a.execute(target, session) })
+	// 送り切ってから少し待って動かす。手足役がいればそちらへ、いなければ自分で。
+	a.logf("実行します: %s (%s, helper=%v)", target.ID, target.Run, helper)
+	a.after(a.runDelay, func() { a.execute(target, helper) })
 }
 
 // runWaited は wait の操作を動かし、終わってから終了コードで返事をする。
 // 常駐アプリ側は時間切れを持たないので、この接続の書き込みの時間切れも外す。
 // WriteTimeout は要求を読んだ時点から数えるので、外さないと長く待った後の返事が書けない。
-func (a *agent) runWaited(w http.ResponseWriter, r *http.Request, key []byte, nonce string, t actions.Action, session bool) {
+func (a *agent) runWaited(w http.ResponseWriter, r *http.Request, key []byte, nonce string, t actions.Action, helper bool) {
 	http.NewResponseController(w).SetWriteDeadline(time.Time{})
-	a.logf("実行して終わりを待ちます: %s (%s, helper=%v)", t.ID, t.Run, session)
+	a.logf("実行して終わりを待ちます: %s (%s, helper=%v)", t.ID, t.Run, helper)
 	// 1 つ空けておき、相手が先に去っても実行の側が送れずに残らないようにする。
 	done := make(chan []byte, 1)
 	go func() {
-		code, err := a.executeWait(r.Context(), t, session)
+		code, err := a.executeWait(r.Context(), t, helper)
 		a.logf("終わりました: %s code=%d err=%v", t.ID, code, err)
 		done <- waitBody(code, err)
 	}()

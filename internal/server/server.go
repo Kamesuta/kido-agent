@@ -20,7 +20,8 @@ type agent struct {
 	actionsDir  string
 	goos        string
 	version     string
-	token       string // 手元の窓口の合言葉(空なら誰も通さない)
+	token       string      // 手元の窓口の合言葉(空なら誰も通さない)
+	osSession   func() bool // 手足役がいなくても OS の決まりでログイン中とみなせるか
 	now         func() time.Time
 	launch      func(a actions.Action) error
 	launchWait  func(a actions.Action) (int, error) // 終わるまで待ち、終了コードを返す
@@ -41,6 +42,7 @@ func newAgent(keyPath, actionsDir, goos, version string, key []byte) *agent {
 		runDelay:    300 * time.Millisecond,
 		after:       func(d time.Duration, f func()) { time.AfterFunc(d, f) },
 		logf:        log.Printf,
+		osSession:   loginSession,
 		stopRequest: make(chan struct{}, 1),
 	}
 	// 組める時間と nonce の失効、手足役がいるかの判断も、テストで差し替えた時計に従わせる。
@@ -51,8 +53,15 @@ func newAgent(keyPath, actionsDir, goos, version string, key []byte) *agent {
 	return a
 }
 
-// sessionActive は誰かがログインしている(手足役がいる)とみなせるか。
-func (a *agent) sessionActive() bool { return a.hub.active() }
+// sessionActive は誰かがログインしているとみなせるか。手足役が取りに来ているか、
+// OS の決まり(Mac は待ち受け役がいること自体、Linux は logind のセッション)で決める。
+// Mac・Linux では手足役が生まれないので、手足役だけで決めると require_login の操作が
+// ログイン中でもずっと押せない。
+func (a *agent) sessionActive() bool { return a.hub.active() || a.osSession() }
+
+// helperActive は手足役が取りに来ているか。操作をどちらで動かすかはこれで決める
+// (ログイン中でも手足役のいない Mac・Linux では、待ち受け役が自分で動かす)。
+func (a *agent) helperActive() bool { return a.hub.active() }
 
 // execute は操作を動かす。手足役がいればそちらへ流し(ログイン中の見た目・窓で動く)、
 // いなければ待ち受け役が自分で画面なしに動かす(require_login でない操作だけここに来る)。

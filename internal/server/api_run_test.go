@@ -171,3 +171,28 @@ func TestHelloAndListSessionFlag(t *testing.T) {
 		t.Fatalf("ログイン中は login を付けない: %s", lr.body)
 	}
 }
+
+// Mac・Linux のように手足役が生まれなくても、OS の決まりでログイン中なら
+// require_login の操作は押せて、待ち受け役が自分で動かす。
+func TestRunRequireLoginWithOSSessionNoHelper(t *testing.T) {
+	ta := pairedAgent(t)
+	ta.osSession = func() bool { return true }
+	d := mkAction(t, ta.actionsDir, "20_lock", "lock.ps1")
+	writeFile(t, d+"/kido.toml", "require_login = true\n")
+	if res := call(t, ta.apiHandler(), "GET", "/v1/hello", ""); !strings.Contains(res.body, `"session":true`) {
+		t.Fatalf("session true のはず: %s", res.body)
+	}
+	_, n := ta.hello(t)
+	lr := call(t, ta.apiHandler(), "POST", "/v1/list", listReq(n, auth.Sign(testKey, "list", n)))
+	if strings.Contains(lr.body, `"login":true`) {
+		t.Fatalf("ログイン中は login を付けない: %s", lr.body)
+	}
+	_, n = ta.hello(t)
+	r := call(t, ta.apiHandler(), "POST", "/v1/run", runReq(n, "20_lock"))
+	if r.status != 200 {
+		t.Fatalf("%+v", r)
+	}
+	if len(ta.launched) != 1 || ta.launched[0] != "20_lock/lock.ps1" {
+		t.Fatalf("手足役がいないので自分で動かすはず: %v", ta.launched)
+	}
+}

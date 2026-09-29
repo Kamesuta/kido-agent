@@ -15,7 +15,7 @@ bin="$HOME/.local/bin/kido-agent"
 [ "$(find "$HOME/KidoButtons" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 4 ] || fail "同梱の操作が 4 つ無い"
 [ -f "$HOME/KidoButtons/使いかた.txt" ] || fail "使いかた.txt が無い"
 
-# require_login = true の試験用の操作。手足役がいないと動かせないことをまず確かめる。
+# require_login = true の試験用の操作。
 mkdir "$HOME/KidoButtons/90_sh"
 printf 'touch "%s/kido-ci-sh"\n' "$HOME" >"$HOME/KidoButtons/90_sh/touch.sh"
 printf 'require_login = true\n' >"$HOME/KidoButtons/90_sh/kido.toml"
@@ -25,19 +25,40 @@ printf 'touch "%s/kido-ci-free"\n' "$HOME" >"$HOME/KidoButtons/92_free/touch.sh"
 python3 ci/hub_stub.py run 92_free || fail "設定なしの操作が手足役なしで動かない"
 sleep 2
 [ -f "$HOME/kido-ci-free" ] || fail "設定なしの操作がログインなしで動いていない"
-python3 ci/hub_stub.py hello | grep -q '"session": false' || fail "手足役がいないのに session が true"
-python3 ci/hub_stub.py run 90_sh 2>&1 | grep -q needs_login || fail "手足役なしで needs_login にならない"
-[ -f "$HOME/kido-ci-sh" ] && fail "ログインなしで動いてしまった"
 
-# 手足役(2 つ目)を起こす。これがログイン中の役の代わり。
+# Mac・Linux では手足役は生まれない。ログイン中かは OS で決まる。Mac は常駐アプリ
+# (LaunchAgent)が動いていればログイン中。Linux は logind に画面のあるログインが
+# あるか(CI のランナーにあるとは限らないので、どちらでも筋が通るかを見る)。
+if python3 ci/hub_stub.py hello | grep -q '"session": true'; then
+	logged_in=1
+else
+	logged_in=0
+fi
+if [ "$(uname -s)" = Darwin ] && [ $logged_in = 0 ]; then
+	fail "Mac では常駐アプリが動いていればログイン中のはず"
+fi
+if [ $logged_in = 1 ]; then
+	# ログイン中なら、手足役がいなくても require_login の操作を待ち受け役が動かす
+	python3 ci/hub_stub.py run 90_sh || fail "ログイン中なのに require_login の操作が動かない"
+	sleep 2
+	[ -f "$HOME/kido-ci-sh" ] || fail "require_login の操作が動いていない(手足役なし)"
+	rm -f "$HOME/kido-ci-sh"
+else
+	python3 ci/hub_stub.py run 90_sh 2>&1 | grep -q needs_login || fail "ログインなしで needs_login にならない"
+	[ -f "$HOME/kido-ci-sh" ] && fail "ログインなしで動いてしまった"
+fi
+
+# 2 つ目のプロセスは手足役になる(Windows のログイン中の役の代わり)。Mac・Linux でも
+# 役の取り合いは同じ作りなので、手足役を経て動くことをここで確かめる。
 "$bin" serve >/tmp/kido-helper.log 2>&1 &
 helper=$!
 i=0
 while [ $i -lt 50 ]; do
-	python3 ci/hub_stub.py hello 2>/dev/null | grep -q '"session": true' && break
+	grep -q '手足役として動きます' /tmp/kido-helper.log 2>/dev/null && break
 	sleep 0.2
 	i=$((i + 1))
 done
+sleep 1 # 手足役が 1 回目を取りに来るまで
 python3 ci/hub_stub.py hello | grep -q '"session": true' || fail "手足役がいるのに session が false"
 
 # 手足役経由で .sh が実際に動く
@@ -45,6 +66,7 @@ python3 ci/hub_stub.py list
 python3 ci/hub_stub.py run 90_sh
 sleep 2
 [ -f "$HOME/kido-ci-sh" ] || fail ".sh が動いていない(手足役経由)"
+grep -q '手足役: 実行しました 90_sh' /tmp/kido-helper.log || fail "手足役を経ていない"
 kill "$helper" 2>/dev/null || true
 "$bin" check || fail "check が失敗した"
 
