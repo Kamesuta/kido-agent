@@ -17,6 +17,7 @@ type kidoToml struct {
 	Confirm      *string `toml:"confirm"`
 	Run          *string `toml:"run"`
 	RequireLogin *bool   `toml:"require_login"`
+	Wait         *bool   `toml:"wait"`
 }
 
 var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
@@ -41,7 +42,7 @@ func readToml(a *Action) kidoToml {
 		return kidoToml{}
 	}
 	for _, k := range meta.Undecoded() {
-		a.warn("kido.toml の知らないキーは無視します: " + k.String() + "(使えるのは name icon confirm run require_login)")
+		a.warn("kido.toml の知らないキーは無視します: " + k.String() + "(使えるのは name icon confirm run require_login wait)")
 	}
 	applyToml(a, cfg)
 	return cfg
@@ -68,5 +69,8 @@ func applyToml(a *Action, cfg kidoToml) {
 	}
 	if cfg.RequireLogin != nil {
 		a.RequireLogin = *cfg.RequireLogin
+	}
+	if cfg.Wait != nil {
+		a.Wait = *cfg.Wait
 	}
 }

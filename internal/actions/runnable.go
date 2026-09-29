@@ -31,6 +31,30 @@ func IsRunnable(goos, name string, mode fs.FileMode) bool {
 	}
 }
 
+// Waitable は、終わるまで待って終了コードを受け取れる種類か。ショートカットやアプリは
+// シェル(ShellExecute・open・gio)に渡すと手元に子が残らず、終わりも成否も分からない。
+func Waitable(goos, name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+	switch goos {
+	case "windows":
+		return inList(ext, ".ps1", ".bat", ".cmd", ".exe")
+	case "darwin":
+		return inList(ext, ".sh", ".command")
+	}
+	return ext != ".desktop"
+}
+
+// WaitHint は wait の付いた操作を直す方法。
+func WaitHint(goos string) string {
+	switch goos {
+	case "windows":
+		return "終わるのを待てるのは .bat .cmd .ps1 .exe だけです。スクリプトを直接置くか、wait の行を消してください"
+	case "darwin":
+		return "終わるのを待てるのは .sh .command だけです。スクリプトを直接置くか、wait の行を消してください"
+	}
+	return "終わるのを待てるのは .sh や実行ファイルだけです。スクリプトを直接置くか、wait の行を消してください"
+}
+
 func inList(s string, list ...string) bool {
 	for _, v := range list {
 		if s == v {
@@ -38,4 +62,23 @@ func inList(s string, list ...string) bool {
 		}
 	}
 	return false
+}
+
+// needsScreen は、動かすのに画面(ログイン中のデスクトップ)がいりがちな種類か。
+func needsScreen(file string) bool {
+	switch strings.ToLower(filepath.Ext(file)) {
+	case ".lnk", ".app", ".command", ".desktop":
+		return true
+	}
+	return false
+}
+
+func RunnableHint(goos string) string {
+	switch goos {
+	case "windows":
+		return "ショートカット(.lnk)か .bat .cmd .ps1 .exe を 1 つだけ置いてください"
+	case "darwin":
+		return ".app か .sh .command を 1 つだけ置いてください"
+	}
+	return ".sh .desktop か、実行権限の付いたファイルを 1 つだけ置いてください"
 }
