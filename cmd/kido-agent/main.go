@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"kido-agent/internal/boot"
 	"kido-agent/internal/server"
 )
 
@@ -21,6 +22,7 @@ const usage = `起動丸エージェント
   pair       起動丸の本体と組む(10 分間だけ受け付けます)
   check      操作フォルダの中身と、組めているかを確かめる
   open       操作フォルダ(~/KidoButtons)を開く
+  boot       ログイン前(電源を入れただけ)でも使えるようにする(on/off で切り替え)
   uninstall  このアプリを取り除く(~/KidoButtons は残します)
   version    版を表示する
 `
@@ -43,6 +45,12 @@ func run(args []string) int {
 		return cmdCheck(os.Stdout)
 	case "open":
 		return cmdOpen(os.Stdout)
+	case "boot":
+		arg := ""
+		if len(args) > 2 {
+			arg = args[2]
+		}
+		return boot.Run(os.Stdout, arg)
 	case "uninstall":
 		return cmdUninstall(os.Stdout)
 	case "version", "--version", "-v":
