@@ -35,11 +35,13 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
 ### `GET /v1/hello`
 
 ```json
-{"v":1,"state":"paired","nonce":"<32 hex>"}
+{"v":1,"state":"paired","nonce":"<32 hex>","session":true}
 ```
 
 - 誰でも呼べる(認証なし)
 - 本体はこれで「常駐アプリがいる」「組めるか」「次の要求の nonce」を知る
+- `session` は、いま誰かがログインしていて画面のいる操作も動かせるか。`false` のとき
+  (ログイン前など)は、`before_login` の操作しか動かせない(下の `login`・`needs_login`)
 
 ### `POST /v1/pair`
 
@@ -61,7 +63,8 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
 {"actions":[
   {"id":"10_sleep","name":"スリープ","icon":"moon"},
   {"id":"40_shutdown","name":"シャットダウン","icon":"power","confirm":"開いているアプリはすべて閉じられます。\n保存していないデータは消えてしまいます。"},
-  {"id":"50_Minecraft起動","name":"Minecraft起動","broken":true}
+  {"id":"50_Minecraft起動","name":"Minecraft起動","broken":true},
+  {"id":"20_lock","name":"画面ロック","icon":"lock","login":true}
 ]}
 ```
 
@@ -71,6 +74,8 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
 - `icon` は `kido.toml` の `icon`。無ければ省く
 - `confirm` は `kido.toml` の `confirm`。無ければ省く。空文字なら `""` を送る(本文なしの確認)
 - `broken` は設定が壊れていて押せない操作(実行できるファイルが無い・2つ以上ある・`kido.toml` が読めない)だけに `true` を付ける
+- `login` は「いまは押せない(ログインが要る)」印。誰もログインしていない(`session` が
+  `false`)ときに、`before_login` でない操作へ付ける。ログイン中は付けない
 - 並びはフォルダ名の昇順
 - 失敗
   - nonce が無い・失効・署名違い: 401 `{"ok":false,"error":"unauthorized"}`
@@ -87,6 +92,7 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
   - 409 not_paired
   - 404 `{"ok":false,"error":"unknown_action"}`: その ID の操作が無い
   - 409 `{"ok":false,"error":"broken_action"}`: その操作の設定が壊れている
+  - 409 `{"ok":false,"error":"needs_login"}`: ログインが要る操作を、誰もログインしていないときに押した(`login` の操作)
 
 ## 上限(常駐アプリが守る。本体も超えたら切り詰める)
 
@@ -110,4 +116,6 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
   - `icon`
   - `confirm`
   - `run`(実行するファイル名。フォルダの中だけ)
+  - `before_login`(bool、既定 false)。true の操作は、誰もログインしていないときも動かせる。
+    false の操作は、その間は一覧で `login` が付き、`run` すると `needs_login` になる
   - 知らないキーは `kido-agent check` で警告する(動作は止めない)

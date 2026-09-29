@@ -74,12 +74,24 @@
 <pre>name = "マイクラ起動"          # スマホに出る名前(32 文字まで)
 icon = "gamepad-2"            # アイコンの名前
 confirm = "本当に起動しますか?"  # 押したときに確認を出す(200 文字まで)
-run = "start.bat"             # 動かすファイルが 2 つ以上あるときに、どれかを選ぶ</pre>
+run = "start.bat"             # 動かすファイルが 2 つ以上あるときに、どれかを選ぶ
+before_login = true           # ログインしていなくても(電源を入れただけで)使えるようにする</pre>
   <ul>
     <li><code>icon</code> は <a href="https://lucide.dev/icons" target="_blank" rel="noopener">lucide.dev/icons</a> にある名前を、英小文字のまま書きます</li>
     <li><code>confirm = ""</code> にすると、文章なしで「実行しますか」だけを聞きます</li>
     <li><code>run</code> には同じフォルダの中のファイル名だけを書けます</li>
+    <li><code>before_login = true</code> にすると、サインインしていなくても(電源を入れただけで)使えます。ただしショートカットやアプリを開くものは、ログインしていないと開けないことがあります</li>
   </ul>
+
+  <h2>ログイン前(電源を入れただけ)でも使う</h2>
+  <p>サインインしていなくても、スリープ・再起動・シャットダウンなどを受け取れるようにできます。インストールの最後にも尋ねますが、あとから切り替えるにはこのコマンドを使います。</p>
+  <div class="command"><code>kido-agent boot on</code><button type="button">コピー</button></div>
+  <ul>
+    <li>Windows: 起動時に動く仕組みを登録します(管理者の確認が一度出ます)。サインイン中は、これまでどおりログイン中の画面で操作が動きます</li>
+    <li>Linux(Ubuntu で動作確認)にも対応しています</li>
+    <li>Mac は、起動時のディスクの暗号化(FileVault)がパスワードを求めるため、ログイン前には動かせません(サインインすれば使えます)</li>
+  </ul>
+  <p>元に戻すには <code>kido-agent boot off</code>、今どうなっているかは <code>kido-agent boot</code> で分かります。</p>
 
   <h2>困ったとき</h2>
   <div class="card">

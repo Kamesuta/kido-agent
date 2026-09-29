@@ -73,6 +73,7 @@ KIDO_AGENT_TARBALL=/path/kido-agent-darwin-arm64.tar.gz sh install/install.sh
 | `icon` | アイコン名。[lucide](https://lucide.dev/icons) の名前(英小文字・数字・`-`、40 文字まで)。違えば省く |
 | `confirm` | 押したときの確認の文章(200 文字まで)。`""` なら文章なしで確認だけ出す |
 | `run` | 実行するファイル名。2 つ以上あるときに選ぶ。フォルダの中のファイル名だけ |
+| `before_login` | `true` にすると、誰もログインしていないとき(電源を入れただけ)でも動かせる。既定 `false` |
 
 ```toml
 name = "マイクラ起動"
@@ -84,6 +85,22 @@ run = "start.bat"
 知らないキーは `kido-agent check` で警告します(動作は止めません)。
 実行できるファイルが無い・2 つ以上ある・`kido.toml` が読めないときは、スマホに押せない操作として出ます。
 
+## ログイン前(電源を入れただけ)でも使う
+
+`kido-agent boot on` にすると、サインインしていなくても操作を受け取れるようになります
+(スリープ・再起動・シャットダウンなど、`before_login = true` の操作)。
+`kido-agent boot off` で元に戻します。引数なしの `kido-agent boot` で今の状態が分かります。
+インストールの最後にも尋ねます。
+
+- Windows: 起動時に動くタスクを登録します(登録には管理者の確認 UAC が出ます)。
+  サインイン中はこれまでどおり、ログイン中の画面・窓で操作が動きます
+- Linux(Ubuntu で動作確認): `loginctl enable-linger` を使います
+- Mac: 起動時のディスクの暗号化(FileVault)がパスワードを求めるため、ログイン前には動かせません
+
+ログインしていない間は、画面のいる操作(ショートカットやアプリを開くものなど)は
+スマホで「ログインが必要」と出て押せません。`before_login = true` を付けても、
+ショートカットなど画面のいるものは開けないことがあります(`kido-agent check` が知らせます)。
+
 ## コマンド
 
 | コマンド | 内容 |
@@ -92,6 +109,7 @@ run = "start.bat"
 | `kido-agent pair` | 本体と組む。10 分だけ受け付ける。組み直すと古い組み合わせは使えなくなる |
 | `kido-agent check` | 操作フォルダを確かめ、✓ / ✗(押せない。理由と直し方)/ !(警告)で表示する。組めているかも出す |
 | `kido-agent open` | 操作フォルダを開く |
+| `kido-agent boot` | ログイン前(電源を入れただけ)でも使えるようにする(`on`/`off`、引数なしで状態) |
 | `kido-agent uninstall` | 取り除く。`~/KidoButtons` は残す |
 | `kido-agent version` | 版を出す |
 
