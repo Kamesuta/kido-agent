@@ -4,6 +4,8 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strings"
+
+	"kido-agent/internal/launch"
 )
 
 // IsRunnable は操作フォルダの中のものが「実行できるファイル」かを OS の決まりで判定する。
@@ -53,6 +55,19 @@ func WaitHint(goos string) string {
 		return "終わるのを待てるのは .sh .command だけです。スクリプトを直接置くか、wait の行を消してください"
 	}
 	return "終わるのを待てるのは .sh や実行ファイルだけです。スクリプトを直接置くか、wait の行を消してください"
+}
+
+// checkCmdPath は、Windows で wait の .bat .cmd を cmd に正しく渡せるかを見る。
+// % ^ の入ったパスは引用符で囲んでも読み違えられるので、押したときに黙って
+// 違うものを動かすより、先に壊れた操作として知らせる(launch.CmdUnsafeChars)。
+func checkCmdPath(a *Action, goos string) {
+	ext := strings.ToLower(filepath.Ext(a.Run))
+	if !a.Wait || a.Broken || goos != "windows" || (ext != ".bat" && ext != ".cmd") {
+		return
+	}
+	if p := launch.CmdPathProblem(filepath.Join(a.Dir, a.Run)); p != "" {
+		a.fail(p, "フォルダ名やファイル名から % と ^ を外してください")
+	}
 }
 
 func inList(s string, list ...string) bool {

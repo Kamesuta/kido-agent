@@ -23,10 +23,13 @@ func RunWait(dir, file string) (int, error) {
 		cmd = exec.Command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", path)
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NO_WINDOW}
 	case ".bat", ".cmd":
-		// cmd /c に渡すと、スクリプトの exit /b の値がそのまま終了コードになる。
-		// 先頭を call にするのは、引用符で始めると cmd /c が引用符を外す決まりに
-		// 触れて、空白や & を含むフォルダ名で壊れるため。
-		cmd = exec.Command(cmdExe(), "/d", "/c", "call", path)
+		// 命令行の組み方と、% ^ を断る理由は batchCmdLine・CmdUnsafeChars に書いた。
+		if p := CmdPathProblem(path); p != "" {
+			return 0, errors.New(p + ": " + path)
+		}
+		c := cmdExe()
+		cmd = exec.Command(c)
+		cmd.SysProcAttr = &syscall.SysProcAttr{CmdLine: batchCmdLine(c, path)}
 	case ".exe":
 		cmd = exec.Command(path)
 	default:

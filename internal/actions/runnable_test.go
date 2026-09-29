@@ -67,3 +67,33 @@ func TestWaitOnShortcutIsBroken(t *testing.T) {
 		}
 	}
 }
+
+// Windows の wait の .bat は、% ^ の入ったパスだと cmd に正しく渡せないので押せない。
+// & ( ) や空白は引用符で囲めば渡せるので、そのまま使える。
+func TestWaitBatchUnsafePath(t *testing.T) {
+	cases := []struct {
+		id, file, goos string
+		broken         bool
+	}{
+		{"60_100%", "start.bat", "windows", true},
+		{"60_a^b", "start.cmd", "windows", true},
+		{"60_A&B (1)", "start.bat", "windows", false},
+		{"60_ok", "start.ps1", "windows", false},
+		{"60_100%", "start.sh", "linux", false},
+	}
+	for _, c := range cases {
+		root := t.TempDir()
+		d := mkAction(t, root, c.id, c.file)
+		writeFile(t, d+"/kido.toml", "wait = true\n")
+		a := scanOne(t, root, c.goos)
+		if a.Broken != c.broken {
+			t.Errorf("%s/%s: %+v", c.id, c.file, a)
+		}
+	}
+	// wait でなければ ShellExecute に渡すので、% が入っていても押せる
+	root := t.TempDir()
+	mkAction(t, root, "60_100%", "start.bat")
+	if a := scanOne(t, root, "windows"); a.Broken {
+		t.Fatalf("%+v", a)
+	}
+}

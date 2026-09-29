@@ -93,6 +93,7 @@ func loadAction(dir, goos string) Action {
 	if a.Wait && !a.Broken && !Waitable(goos, a.Run) {
 		a.fail("wait = true は、ショートカットやアプリには使えません("+a.Run+")", WaitHint(goos))
 	}
+	checkCmdPath(&a, goos)
 	// 画面のいる形式なのに require_login が無いと、ログイン前に押したとき
 	// 画面のないところで起動して見えない。窓が要るなら require_login を勧める。
 	if !a.RequireLogin && !a.Broken && needsScreen(a.Run) {

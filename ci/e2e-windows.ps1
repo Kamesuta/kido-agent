@@ -61,6 +61,13 @@ try {
     Set-Content "$kido\93_wait\kido.toml" "wait = true" -Encoding ASCII
     (python ci/hub_stub.py run 93_wait) | Tee-Object -Variable waitOut | Write-Host
     Assert ($waitOut -match '"code":3') 'wait の操作が終了コードを返さない(ログインなし)'
+    # & ( ) と空白の入ったフォルダでも、cmd が区切りと読み違えずに動かす。
+    $odd = "$kido\94_a&b (1)"
+    New-Item -ItemType Directory -Path $odd | Out-Null
+    Set-Content -LiteralPath "$odd\fail.bat" "@echo off`r`nexit /b 4" -Encoding ASCII
+    Set-Content -LiteralPath "$odd\kido.toml" "wait = true" -Encoding ASCII
+    (python ci/hub_stub.py run '94_a&b (1)') | Tee-Object -Variable oddOut | Write-Host
+    Assert ($oddOut -match '"code":4') '& ( ) の入ったフォルダの wait が動かない'
 
     # 手足役(2 つ目の kido-agentd)を起こす。これはログイン中の画面を持つ役。
     Start-Process -FilePath "$dest\kido-agentd.exe" -WorkingDirectory $dest
