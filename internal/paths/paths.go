@@ -62,3 +62,13 @@ func KeyFile() (string, error) {
 	}
 	return filepath.Join(dir, "key.json"), nil
 }
+
+// TokenFile は手元の窓口(control)の合言葉の置き場。待ち受け役が起動のたびに
+// 書き直し、CLI と手足役が読んで添える。同じ PC の別ユーザーになりすまされないため。
+func TokenFile() (string, error) {
+	dir, err := ConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "control.token"), nil
+}

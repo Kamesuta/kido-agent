@@ -18,6 +18,7 @@ type agent struct {
 	actionsDir  string
 	goos        string
 	version     string
+	token       string // 手元の窓口の合言葉(空なら誰も通さない)
 	now         func() time.Time
 	launch      func(a actions.Action) error
 	runDelay    time.Duration

@@ -28,6 +28,7 @@ func newTestAgent(t *testing.T) *testAgent {
 	}
 	ta := &testAgent{clock: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
 	ta.agent = newAgent(filepath.Join(base, "cfg", "key.json"), dir, "windows", "test", nil)
+	ta.token = "test-token"
 	ta.now = func() time.Time { return ta.clock }
 	ta.logf = t.Logf
 	ta.launch = func(a actions.Action) error {

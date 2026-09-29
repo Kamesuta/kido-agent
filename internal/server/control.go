@@ -31,7 +31,9 @@ func (a *agent) controlHandler() http.Handler {
 		}
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get(control.Header) != "1" {
+		// 合言葉が空、または合わなければ断る。同じ PC の別ユーザーからのなりすましと、
+		// ブラウザの中のページからの要求(合言葉を知りようがない)を止める。
+		if a.token == "" || r.Header.Get(control.Header) != a.token {
 			writeError(w, http.StatusForbidden, "forbidden")
 			return
 		}

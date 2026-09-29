@@ -29,6 +29,16 @@ func call(t *testing.T, h http.Handler, method, path, body string) apiResult {
 	return apiResult{rec.Code, string(data), rec.Header().Get("X-Kido-Sig")}
 }
 
+func callToken(t *testing.T, h http.Handler, method, path, body, token string) apiResult {
+	t.Helper()
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req.Header.Set("X-Kido-Control", token)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	data, _ := io.ReadAll(rec.Body)
+	return apiResult{rec.Code, string(data), rec.Header().Get("X-Kido-Sig")}
+}
+
 func (ta *testAgent) hello(t *testing.T) (state, nonce string) {
 	t.Helper()
 	res := call(t, ta.apiHandler(), "GET", "/v1/hello", "")
@@ -127,10 +137,19 @@ func TestListRejects(t *testing.T) {
 	}
 }
 
-func TestControlRequiresHeader(t *testing.T) {
+func TestControlRequiresToken(t *testing.T) {
 	ta := newTestAgent(t)
 	h := ta.controlHandler()
+	// 合言葉なし
 	if r := call(t, h, "POST", "/control/pair", ""); r.status != 403 || ta.pairing.State() != auth.StateUnpaired {
-		t.Fatal("独自ヘッダの無い要求で組める時間が開いた")
+		t.Fatal("合言葉の無い要求で組める時間が開いた")
+	}
+	// 合言葉が違う
+	if r := callToken(t, h, "POST", "/control/pair", "", "wrong"); r.status != 403 {
+		t.Fatalf("違う合言葉が通った: %+v", r)
+	}
+	// 正しい合言葉
+	if r := callToken(t, h, "POST", "/control/pair", "", "test-token"); r.status != 200 {
+		t.Fatalf("正しい合言葉が通らない: %+v", r)
 	}
 }

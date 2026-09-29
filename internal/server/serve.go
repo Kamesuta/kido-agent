@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"kido-agent/internal/auth"
+	"kido-agent/internal/control"
 	"kido-agent/internal/defaults"
 	"kido-agent/internal/logfile"
 	"kido-agent/internal/paths"
@@ -50,7 +51,8 @@ func Serve(version string) int {
 	if err != nil {
 		log.Printf("%v。組み直してください(kido-agent pair)", err)
 	}
-	return serveAgent(newAgent(kp, dir, runtime.GOOS, version, key))
+	ag := newAgent(kp, dir, runtime.GOOS, version, key)
+	return serveAgent(ag)
 }
 
 func serveAgent(a *agent) int {
@@ -60,6 +62,13 @@ func serveAgent(a *agent) int {
 		log.Printf("もう動いているようです(%v)", err)
 		return 1
 	}
+	// 窓口を取れた側が待ち受け役。合言葉を書き、CLI と手足役が読めるようにする。
+	tok, err := control.WriteToken()
+	if err != nil {
+		log.Printf("合言葉を書けません: %v", err)
+		return 1
+	}
+	a.token = tok
 	api, err := net.Listen("tcp", paths.APIAddr)
 	if err != nil {
 		log.Printf("%s で待ち受けられません: %v", paths.APIAddr, err)
