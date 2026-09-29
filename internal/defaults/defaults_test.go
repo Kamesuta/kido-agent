@@ -31,15 +31,18 @@ func TestDefaultsWrittenOnlyWhenAbsent(t *testing.T) {
 			t.Errorf("%+v", list[3])
 		}
 		// 使いかた.txt はフォルダ直下のファイルなので操作にならない(上の 4 つで確かめ済み)。
-		// Windows だけメモ帳向けに BOM と CRLF にする
-		txt, err := os.ReadFile(filepath.Join(dir, "使いかた.txt"))
-		if err != nil {
-			t.Fatalf("%s: %v", goos, err)
-		}
-		bom := len(txt) >= 3 && string(txt[:3]) == "\ufeff"
-		crlf := strings.Contains(string(txt), "\r\n")
-		if bom != (goos == "windows") || crlf != (goos == "windows") {
-			t.Errorf("%s: BOM=%v CRLF=%v", goos, bom, crlf)
+		// 利用者がメモ帳で開くものは、Windows だけ BOM と CRLF にする
+		// (kido.toml がそれでも読めることは、上の Scan で確かめ済み)
+		for _, name := range []string{"使いかた.txt", filepath.Join("40_shutdown", "kido.toml")} {
+			txt, err := os.ReadFile(filepath.Join(dir, name))
+			if err != nil {
+				t.Fatalf("%s: %v", goos, err)
+			}
+			bom := len(txt) >= 3 && string(txt[:3]) == "\ufeff"
+			crlf := strings.Contains(string(txt), "\r\n")
+			if bom != (goos == "windows") || crlf != (goos == "windows") {
+				t.Errorf("%s/%s: BOM=%v CRLF=%v", goos, name, bom, crlf)
+			}
 		}
 		// 利用者が消したものを戻さない
 		os.RemoveAll(filepath.Join(dir, "10_sleep"))

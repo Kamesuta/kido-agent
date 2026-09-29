@@ -41,7 +41,9 @@ func Write(dir, goos string) (bool, error) {
 		if err != nil {
 			return err
 		}
-		if goos == "windows" && strings.HasSuffix(p, ".txt") {
+		// kido.toml も利用者がメモ帳で開いて書き換えるので、使いかた.txt と同じ形にする
+		// (読むほうは BOM を外してから読む)
+		if goos == "windows" && (strings.HasSuffix(p, ".txt") || strings.HasSuffix(p, ".toml")) {
 			data = forNotepad(data)
 		}
 		mode := fs.FileMode(0o644)
