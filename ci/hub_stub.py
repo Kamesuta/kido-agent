@@ -7,6 +7,7 @@ Windows・Mac・Linux の CI でそのまま動くようにしている。
   python3 ci/hub_stub.py pair      組める時間が開くのを待って鍵を渡す
   python3 ci/hub_stub.py list      一覧を取り、署名を確かめて表示する
   python3 ci/hub_stub.py run <id>  操作を動かす
+  python3 ci/hub_stub.py hello     状態(session など)を表示する
 """
 import hashlib
 import hmac
@@ -69,6 +70,12 @@ def call(kind, extra):
     return 0
 
 
+def show_hello():
+    h = hello()
+    print("hello:", json.dumps(h, ensure_ascii=False))
+    return 0
+
+
 def main(argv):
     if argv[:1] == ["pair"]:
         return pair()
@@ -76,6 +83,8 @@ def main(argv):
         return call("list", {})
     if argv[:1] == ["run"] and len(argv) == 2:
         return call("run", {"id": argv[1]})
+    if argv[:1] == ["hello"]:
+        return show_hello()
     print(__doc__)
     return 2
 

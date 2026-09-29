@@ -144,6 +144,15 @@ function Wait-Agent {
     return $null
 }
 
+# Confirm-Boot はログイン前でも使うか尋ねる。既定は「はい」。画面から入力できない
+# (自動化)ときは尋ねず「いいえ」にする(勝手に UAC を出さないため)。
+function Confirm-Boot {
+    if (-not [Environment]::UserInteractive) { return $false }
+    Write-Host ''
+    $ans = Read-Host 'ログイン前(電源を入れただけ)でも使えるようにしますか? [Y/n]'
+    return ($ans -notmatch '^[nN]')
+}
+
 $work = Join-Path ([IO.Path]::GetTempPath()) ("kido-agent-" + [Guid]::NewGuid())
 New-Item -ItemType Directory -Path $work | Out-Null
 try {
@@ -183,17 +192,17 @@ try {
     Write-Host ''
     Write-Host '操作フォルダ(~/KidoButtons)を開きました。ショートカットを入れたフォルダを作ると、スマホに操作が増えます。'
 
+    # KIDO_AGENT_BOOT=on/off/skip を渡すと尋ねない(自動化・CI 向け)。
+    $bootChoice = $env:KIDO_AGENT_BOOT
     if ($hadTask) {
         Write-Host 'ログイン前(電源を入れただけ)でも使えます(設定済み)。'
+    } elseif ($bootChoice -eq 'skip' -or $bootChoice -eq 'off') {
+        Write-Host 'あとから設定できます: kido-agent boot on'
+    } elseif ($bootChoice -eq 'on' -or (Confirm-Boot)) {
+        Write-Host 'このあと管理者の確認(UAC)が出ます。「はい」を押してください。'
+        & "$Dest\kido-agent.exe" boot on
     } else {
-        Write-Host ''
-        $ans = Read-Host 'ログイン前(電源を入れただけ)でも使えるようにしますか? [Y/n]'
-        if ($ans -notmatch '^[nN]') {
-            Write-Host 'このあと管理者の確認(UAC)が出ます。「はい」を押してください。'
-            & "$Dest\kido-agent.exe" boot on
-        } else {
-            Write-Host 'あとから設定できます: kido-agent boot on'
-        }
+        Write-Host 'あとから設定できます: kido-agent boot on'
     }
     Write-Host '困ったときは: kido-agent check'
 } catch {
