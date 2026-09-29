@@ -1,6 +1,6 @@
 # 起動時タスク KidoAgent を消す(管理者で実行される)。
-$ErrorActionPreference = 'SilentlyContinue'
+# Unregister-ScheduledTask はこの PC の別タスクの壊れた XML で例外になる実績があるので、
+# CIM を通さない schtasks で名指しで消す。無ければ何もしない(exit 0)。
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
-# 名指しで消す。無ければ何もしない(Get-ScheduledTask のワイルドカードは使わない)。
-Unregister-ScheduledTask -TaskName 'KidoAgent' -Confirm:$false
+cmd /c "schtasks /delete /tn KidoAgent /f >nul 2>nul"
 exit 0

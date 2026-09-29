@@ -77,7 +77,27 @@ func saferNormalUserToken() (windows.Token, error) {
 	if r == 0 {
 		return 0, e
 	}
+	// SAFER は管理者の権限を外すが、整合性レベルは High のまま残る(SAFER は UAC より
+	// 前の仕組みで、整合性を触らない)。High のままだと結局「管理者相当」で動くので、
+	// 明示的に Medium(普通のユーザー)へ下げる。
+	if err := setMediumIntegrity(token); err != nil {
+		token.Close()
+		return 0, err
+	}
 	return token, nil
+}
+
+// setMediumIntegrity はトークンの整合性レベルを Medium(S-1-16-8192)にする。
+func setMediumIntegrity(token windows.Token) error {
+	sid, err := windows.StringToSid("S-1-16-8192")
+	if err != nil {
+		return err
+	}
+	label := windows.Tokenmandatorylabel{
+		Label: windows.SIDAndAttributes{Sid: sid, Attributes: windows.SE_GROUP_INTEGRITY},
+	}
+	return windows.SetTokenInformation(token, windows.TokenIntegrityLevel,
+		(*byte)(unsafe.Pointer(&label)), label.Size())
 }
 
 // relaunchAs は与えたトークンで、自分と同じ実行ファイル・引数の子を起こす。

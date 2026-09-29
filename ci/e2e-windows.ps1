@@ -98,7 +98,30 @@ try {
         Start-Sleep 1
     }
     Assert ($log -match '普通のユーザー') 'ログに権限降格(普通のユーザー)が見えない'
-    Write-Host '✓ S4U タスクが普通のユーザーの権限で動いていることを確認'
+    # ログの文言だけでなく、実際にプロセスの整合性レベルが Medium まで下がっている
+    # ことを確かめる(SAFER だけだと High のまま残る)。
+    Add-Type -Namespace K -Name Tok -MemberDefinition @'
+[DllImport("advapi32.dll",SetLastError=true)] public static extern bool OpenProcessToken(IntPtr h,uint acc,out IntPtr tok);
+[DllImport("advapi32.dll",SetLastError=true)] public static extern bool GetTokenInformation(IntPtr tok,int cls,IntPtr buf,int len,out int need);
+[DllImport("advapi32.dll",SetLastError=true)] public static extern bool ConvertSidToStringSidW(IntPtr sid,out System.IntPtr str);
+'@
+    function Get-Integrity($procId) {
+        $h = (Get-Process -Id $procId).Handle
+        $tok = [IntPtr]::Zero
+        if (-not [K.Tok]::OpenProcessToken($h, 0x8, [ref]$tok)) { return '?' }
+        $need = 0; [K.Tok]::GetTokenInformation($tok, 25, [IntPtr]::Zero, 0, [ref]$need) | Out-Null
+        $buf = [Runtime.InteropServices.Marshal]::AllocHGlobal($need)
+        [K.Tok]::GetTokenInformation($tok, 25, $buf, $need, [ref]$need) | Out-Null
+        $sp = [IntPtr]::Zero
+        [K.Tok]::ConvertSidToStringSidW([Runtime.InteropServices.Marshal]::ReadIntPtr($buf), [ref]$sp) | Out-Null
+        $sid = [Runtime.InteropServices.Marshal]::PtrToStringUni($sp)
+        [Runtime.InteropServices.Marshal]::FreeHGlobal($buf)
+        switch ($sid) { 'S-1-16-8192' { 'Medium' } 'S-1-16-12288' { 'High' } 'S-1-16-4096' { 'Low' } default { $sid } }
+    }
+    $levels = @(Get-CimInstance Win32_Process -Filter "Name='kido-agentd.exe'" | ForEach-Object { Get-Integrity $_.ProcessId })
+    Write-Host ("kido-agentd の整合性レベル: " + ($levels -join ', '))
+    Assert (($levels -contains 'Medium') -and -not ($levels -contains 'High')) "権限が Medium まで下がっていない: $levels"
+    Write-Host '✓ S4U タスクが Medium(普通のユーザー)の整合性で動いていることを確認'
     & "$dest\kido-agent.exe" boot off
     Start-Sleep 3
     cmd /c "schtasks /query /tn KidoAgent >nul 2>nul"
