@@ -1,3 +1,4 @@
 * text=auto eol=lf
-# 見本の .bat は GitHub からそのまま落とされる。cmd は LF だけの .bat で行を読み違えることがある
-examples/**/*.bat text eol=crlf
+# 見本の .bat は GitHub からそのまま落とされ、手元の変換を通らない。
+# cmd は LF だけの .bat で行を読み違えることがあるので、CRLF のまま保存する
+examples/**/*.bat -text
