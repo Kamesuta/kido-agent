@@ -17,6 +17,8 @@ func cmdUninstall(out io.Writer) int {
 	// 自動起動を先に外す。先に止めると、OS が「落ちた」と見て起こし直すことがある。
 	uninstall.RemoveAutostart(out)
 	stopDaemon()
+	// 待ち受け役が止まっても、手足役が窓口を取り直して残る(Windows)。自分の分を全部止める。
+	uninstall.StopDaemons(out)
 	if dir, err := paths.ConfigDir(); err == nil {
 		// 鍵は秘密なので残さない。ログも一緒に消える。
 		if err := os.RemoveAll(dir); err != nil {
