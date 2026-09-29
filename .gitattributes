@@ -1,1 +1,3 @@
 * text=auto eol=lf
+# 見本の .bat は GitHub からそのまま落とされる。cmd は LF だけの .bat で行を読み違えることがある
+examples/**/*.bat text eol=crlf
