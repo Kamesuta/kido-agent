@@ -61,6 +61,21 @@ function Get-Package([string]$Work) {
     return $daemon.DirectoryName
 }
 
+# Copy-Program は exe を入れ替える。止めた直後は、ウイルス対策の検査などで exe が
+# 少しのあいだ掴まれたままのことがあり、すぐ書くと「使用中」で失敗する(実機で確認)。
+# 数秒のあいだ、やり直す。
+function Copy-Program([string]$Pkg) {
+    foreach ($i in 1..20) {
+        try {
+            Copy-Item -Path (Join-Path $Pkg 'kido-agent*.exe') -Destination $Dest -Force -ErrorAction Stop
+            return
+        } catch {
+            if ($i -eq 20) { throw }
+            Start-Sleep -Milliseconds 500
+        }
+    }
+}
+
 # Test-BootTask は起動時タスク KidoAgent があるかを名指しで確かめる
 # (壊れた別タスクの XML でワイルドカードが例外になる実績があるので名指し)。
 function Test-BootTask {
@@ -170,7 +185,7 @@ try {
     $hadTask = Test-BootTask
     Stop-Agent
     New-Item -ItemType Directory -Path $Dest -Force | Out-Null
-    Copy-Item -Path (Join-Path $pkg 'kido-agent*.exe') -Destination $Dest -Force
+    Copy-Program $pkg
     Get-ChildItem -LiteralPath $Dest -Filter '*.exe' | Unblock-File
     $version = ((& "$Dest\kido-agent.exe" version) -split ' ')[-1]
     Register-Agent $version
