@@ -111,31 +111,26 @@ func whoami() string {
 // runElevated は埋め込んだ PowerShell を管理者の権限で実行する。すでに昇格して
 // いれば(CI ランナーなど)そのまま実行し、していなければ UAC で昇格する。
 // 失敗したときは、スクリプトの出力(例外メッセージ)を err と一緒に返す。
+// 中身はファイルに書かず -EncodedCommand で渡す(理由は encodedCommand)。
 func runElevated(script string, args ...string) (output string, err error) {
 	data, e := scripts.ReadFile(script)
 	if e != nil {
 		return "", e
 	}
-	tmp := filepath.Join(os.TempDir(), "kido-"+script)
-	// UTF-8 の BOM を付ける。Windows PowerShell 5.1 は BOM の無い .ps1 を -File で
-	// ANSI として読み、日本語のコメントや文字列を壊して構文エラーになるため。
-	if e := os.WriteFile(tmp, append([]byte{0xEF, 0xBB, 0xBF}, data...), 0o600); e != nil {
-		return "", e
-	}
-	defer os.Remove(tmp)
+	enc := encodedCommand(string(data), args...)
+	psArgs := []string{"-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", enc}
 
 	var cmd *exec.Cmd
 	if isElevated() {
 		// すでに管理者。RunAs を挟むと(UAC を切った環境で)昇格の段が空振りする
 		// ことがあるので、同じプロセスでそのまま実行する。
-		psArgs := append([]string{"-NoProfile", "-ExecutionPolicy", "Bypass", "-File", tmp}, args...)
 		cmd = exec.Command("powershell.exe", psArgs...)
 	} else {
 		// 管理者でない。UAC を出して昇格し、終わるのを待って終了コードを引き継ぐ。
-		argList := append([]string{"-NoProfile", "-ExecutionPolicy", "Bypass", "-File", tmp}, args...)
-		quoted := make([]string, len(argList))
-		for i, a := range argList {
-			quoted[i] = "'" + strings.ReplaceAll(a, "'", "''") + "'"
+		// base64 は英数字と + / = だけなので、単一引用符でそのまま囲める。
+		quoted := make([]string, len(psArgs))
+		for i, a := range psArgs {
+			quoted[i] = psQuote(a)
 		}
 		ps := fmt.Sprintf(
 			"$p = Start-Process powershell -Verb RunAs -Wait -PassThru -ArgumentList %s; exit $p.ExitCode",
