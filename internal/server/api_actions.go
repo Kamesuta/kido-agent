@@ -24,7 +24,7 @@ func (a *agent) handleList(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.logf("操作フォルダを読めません: %v", err)
 	}
-	body, _ := actions.ListBody(list, true)
+	body, _ := actions.ListBody(list, a.sessionActive())
 	writeBody(w, http.StatusOK, body, auth.Sign(key, "list-ok", req.Nonce, string(body)))
 }
 
@@ -43,12 +43,17 @@ func (a *agent) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	target, found := actions.Find(a.actionsDir, a.goos, req.ID)
+	session := a.sessionActive()
 	switch {
 	case !found:
 		writeError(w, http.StatusNotFound, "unknown_action")
 		return
 	case target.Broken:
 		writeError(w, http.StatusConflict, "broken_action")
+		return
+	case !session && !target.BeforeLogin:
+		// 誰もログインしておらず、ログイン前に使ってよい操作でもない。
+		writeError(w, http.StatusConflict, "needs_login")
 		return
 	}
 	body := []byte(`{"ok":true}`)
@@ -57,11 +62,7 @@ func (a *agent) handleRun(w http.ResponseWriter, r *http.Request) {
 		f.Flush()
 	}
 	// スリープやシャットダウンを先に始めると返事が本体に届かないので、
-	// 送り切ってから少し待って動かす。
-	a.logf("実行します: %s (%s)", target.ID, target.Run)
-	a.after(a.runDelay, func() {
-		if err := a.launch(target); err != nil {
-			a.logf("実行に失敗しました: %s: %v", target.ID, err)
-		}
-	})
+	// 送り切ってから少し待って動かす。ログイン中は手足役へ、そうでなければ自分で。
+	a.logf("実行します: %s (%s, helper=%v)", target.ID, target.Run, session)
+	a.after(a.runDelay, func() { a.execute(target, session) })
 }

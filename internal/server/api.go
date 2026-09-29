@@ -31,10 +31,11 @@ func (a *agent) handleHello(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body, _ := json.Marshal(struct {
-		V     int    `json:"v"`
-		State string `json:"state"`
-		Nonce string `json:"nonce"`
-	}{1, a.pairing.State(), nonce})
+		V       int    `json:"v"`
+		State   string `json:"state"`
+		Nonce   string `json:"nonce"`
+		Session bool   `json:"session"` // 手足役がいる(誰かがログインしている)か
+	}{1, a.pairing.State(), nonce, a.sessionActive()})
 	writeBody(w, http.StatusOK, body, "")
 }
 

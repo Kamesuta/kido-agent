@@ -97,6 +97,7 @@ func TestPairEndpoint(t *testing.T) {
 
 func TestListSigned(t *testing.T) {
 	ta := pairedAgent(t)
+	ta.setLoggedIn(true)
 	mkAction(t, ta.actionsDir, "10_sleep", "sleep.ps1")
 	mkAction(t, ta.actionsDir, "50_Game", "a.bat", "b.bat")
 	_, n := ta.hello(t)

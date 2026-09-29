@@ -52,16 +52,37 @@ func Serve(version string) int {
 		log.Printf("%v。組み直してください(kido-agent pair)", err)
 	}
 	ag := newAgent(kp, dir, runtime.GOOS, version, key)
-	return serveAgent(ag)
+	// Windows で昇格して起動されていたら、普通のユーザーの権限で起動し直す
+	// (起動時タスクは管理者で動くため)。起動し直したら親はここで終わる。
+	if dropPrivilege() {
+		return 0
+	}
+	return runRole(ag)
 }
 
-func serveAgent(a *agent) int {
-	// 操作用の窓口を先に取る。取れなければ、もう 1 つ動いているので黙って引き下がる。
-	ctl, err := net.Listen("tcp", paths.ControlAddr)
-	if err != nil {
+// runRole は役を決める。手元の窓口を取れたら待ち受け役(全機能)。取れず、既存の
+// 待ち受け役が応えるなら手足役(ログイン中の画面で実行する側)。待ち受け役が
+// 消えたら、また窓口を取りに行って待ち受け役になろうとする。
+func runRole(a *agent) int {
+	for {
+		ctl, err := net.Listen("tcp", paths.ControlAddr)
+		if err == nil {
+			return runListener(a, ctl)
+		}
+		if _, e := control.Call("GET", "/control/status"); e == nil {
+			log.Printf("手足役として動きます(別のプロセスが待ち受けています)")
+			runHelper()
+			// 待ち受け役が消えた。少し待ってから、自分が待ち受け役になろうとする。
+			time.Sleep(time.Second)
+			continue
+		}
 		log.Printf("もう動いているようです(%v)", err)
 		return 1
 	}
+}
+
+// runListener は待ち受け役として、本体の窓口と手元の窓口を開いて待つ。
+func runListener(a *agent, ctl net.Listener) int {
 	// 窓口を取れた側が待ち受け役。合言葉を書き、CLI と手足役が読めるようにする。
 	tok, err := control.WriteToken()
 	if err != nil {

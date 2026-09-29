@@ -16,7 +16,8 @@ func runReq(nonce, id string) string {
 
 func TestRunExecutesAfterReply(t *testing.T) {
 	ta := pairedAgent(t)
-	mkAction(t, ta.actionsDir, "10_sleep", "sleep.ps1", "readme.txt")
+	d := mkAction(t, ta.actionsDir, "10_sleep", "sleep.ps1", "readme.txt")
+	writeFile(t, d+"/kido.toml", "before_login = true\n") // ログインなしで、待ち受け役が自分で動かす
 	var order []string
 	launch := ta.launch
 	ta.launch = func(a actions.Action) error { order = append(order, "launch"); return launch(a) }
@@ -66,6 +67,7 @@ func TestRunErrors(t *testing.T) {
 
 func TestListLimits(t *testing.T) {
 	ta := pairedAgent(t)
+	ta.setLoggedIn(true) // login の印が入らない状態で切り詰めだけを見る
 	long := strings.Repeat("あ", 200)
 	for i := 0; i < 30; i++ {
 		d := mkAction(t, ta.actionsDir, fmt.Sprintf("%02d_%s", i, strings.Repeat("x", 50)), "a.bat")
@@ -86,5 +88,84 @@ func TestListLimits(t *testing.T) {
 	body, sent := actions.ListBody(list, true)
 	if sent == 0 || sent >= actions.MaxActions || string(body) != res.body {
 		t.Fatalf("sent=%d", sent)
+	}
+}
+
+func TestRunNeedsLoginWhenNotLoggedIn(t *testing.T) {
+	ta := pairedAgent(t)
+	// ログインしていない。before_login でない操作は動かせない
+	mkAction(t, ta.actionsDir, "20_lock", "lock.ps1")
+	_, n := ta.hello(t)
+	r := call(t, ta.apiHandler(), "POST", "/v1/run", runReq(n, "20_lock"))
+	if r.status != 409 || !strings.Contains(r.body, "needs_login") {
+		t.Fatalf("%+v", r)
+	}
+	if len(ta.launched) != 0 {
+		t.Fatal("動かしてはいけない")
+	}
+}
+
+func TestRunViaHelperWhenLoggedIn(t *testing.T) {
+	ta := pairedAgent(t)
+	ta.setLoggedIn(true)
+	mkAction(t, ta.actionsDir, "20_lock", "lock.ps1")
+	// 手足役が取りに来る役をたてる
+	got := make(chan *helperJob, 1)
+	go func() {
+		j := ta.hub.poll()
+		got <- j
+		if j != nil {
+			ta.hub.complete(j.ID, "")
+		}
+	}()
+	_, n := ta.hello(t)
+	r := call(t, ta.apiHandler(), "POST", "/v1/run", runReq(n, "20_lock"))
+	if r.status != 200 {
+		t.Fatalf("%+v", r)
+	}
+	select {
+	case j := <-got:
+		if j == nil || j.ID != "20_lock" {
+			t.Fatalf("手足役に流れていない: %+v", j)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("手足役に流れてこない")
+	}
+	// ログイン中はローカル実行(a.launch)は使わない
+	if len(ta.launched) != 0 {
+		t.Fatal("ログイン中は手足役経由のはず")
+	}
+}
+
+func TestHelloAndListSessionFlag(t *testing.T) {
+	ta := pairedAgent(t)
+	mkAction(t, ta.actionsDir, "10_sleep", "sleep.ps1")
+	writeFile(t, ta.actionsDir+"/10_sleep/kido.toml", "before_login = true\n")
+	mkAction(t, ta.actionsDir, "20_lock", "lock.ps1")
+
+	// ログインしていない: hello の session は false、list の 20_lock に login
+	res := call(t, ta.apiHandler(), "GET", "/v1/hello", "")
+	if !strings.Contains(res.body, `"session":false`) {
+		t.Fatalf("session false のはず: %s", res.body)
+	}
+	_, n := ta.hello(t)
+	lr := call(t, ta.apiHandler(), "POST", "/v1/list", listReq(n, auth.Sign(testKey, "list", n)))
+	if !strings.Contains(lr.body, `"id":"20_lock","name":"lock","login":true`) {
+		t.Fatalf("before_login でない操作に login が要る: %s", lr.body)
+	}
+	if strings.Contains(lr.body, `"id":"10_sleep","name":"sleep","login":true`) {
+		t.Fatalf("before_login の操作に login は付けない: %s", lr.body)
+	}
+
+	// ログイン中: session true、login は付かない
+	ta.setLoggedIn(true)
+	res = call(t, ta.apiHandler(), "GET", "/v1/hello", "")
+	if !strings.Contains(res.body, `"session":true`) {
+		t.Fatalf("session true のはず: %s", res.body)
+	}
+	_, n = ta.hello(t)
+	lr = call(t, ta.apiHandler(), "POST", "/v1/list", listReq(n, auth.Sign(testKey, "list", n)))
+	if strings.Contains(lr.body, `"login":true`) {
+		t.Fatalf("ログイン中は login を付けない: %s", lr.body)
 	}
 }

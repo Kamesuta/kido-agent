@@ -46,6 +46,18 @@ func newTestAgent(t *testing.T) *testAgent {
 
 func (ta *testAgent) advance(d time.Duration) { ta.clock = ta.clock.Add(d) }
 
+// setLoggedIn は手足役がいる/いないを装う。いるときは今の時刻を最後のポーリングに
+// することで active() を真にし、いないときは 0 に戻す。
+func (ta *testAgent) setLoggedIn(v bool) {
+	ta.hub.mu.Lock()
+	if v {
+		ta.hub.lastPoll = ta.clock
+	} else {
+		ta.hub.lastPoll = time.Time{}
+	}
+	ta.hub.mu.Unlock()
+}
+
 // mkAction は操作フォルダを作り、中にファイルを置く(中身は名前をそのまま)。
 func mkAction(t *testing.T, root, id string, files ...string) string {
 	t.Helper()
