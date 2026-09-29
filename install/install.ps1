@@ -64,14 +64,16 @@ function Get-Package([string]$Work) {
 # Test-BootTask は起動時タスク KidoAgent があるかを名指しで確かめる
 # (壊れた別タスクの XML でワイルドカードが例外になる実績があるので名指し)。
 function Test-BootTask {
-    & schtasks /query /tn KidoAgent *> $null
+    # cmd 経由にするのは、schtasks が標準エラーに書くとき PowerShell が
+    # 停止扱いにして例外にすることがあるため(見つからない=タスク無しは普通のこと)。
+    cmd /c "schtasks /query /tn KidoAgent >nul 2>nul"
     return ($LASTEXITCODE -eq 0)
 }
 
 # Stop-Agent は動いている常駐アプリ(待ち受け役・手足役の両方)を止める。
 # 動いている exe は上書きできないため。起動時タスクがあれば、その実体も止める。
 function Stop-Agent {
-    if (Test-BootTask) { & schtasks /end /tn KidoAgent *> $null }
+    if (Test-BootTask) { cmd /c "schtasks /end /tn KidoAgent >nul 2>nul" }
     Get-Process -Name 'kido-agentd' -ErrorAction SilentlyContinue | Stop-Process -Force
     foreach ($i in 1..30) {
         if (-not (Get-Process -Name 'kido-agentd' -ErrorAction SilentlyContinue)) { break }
@@ -133,12 +135,19 @@ function New-FolderShortcut {
     Move-Item -LiteralPath $tmp -Destination (Join-Path $programs '起動丸の操作フォルダ.lnk') -Force
 }
 
+# ControlToken は待ち受け役が置いた合言葉を読む。/control はこれを添えないと断る。
+function ControlToken {
+    $f = Join-Path $env:USERPROFILE '.kido-agent\control.token'
+    if (Test-Path $f) { return (Get-Content -Raw $f) }
+    return ''
+}
+
 # Wait-Agent は常駐アプリが答えるまで待ち、その状態を返す(起動しなければ $null)。
 function Wait-Agent {
     foreach ($i in 1..50) {
         try {
             return Invoke-RestMethod -UseBasicParsing -Uri 'http://127.0.0.1:47822/control/status' `
-                -Headers @{ 'X-Kido-Control' = '1' } -TimeoutSec 1
+                -Headers @{ 'X-Kido-Control' = (ControlToken) } -TimeoutSec 1
         } catch { Start-Sleep -Milliseconds 100 }
     }
     return $null
@@ -173,7 +182,7 @@ try {
     if ($hadTask) {
         # もともとログイン前対応(起動時タスク)がある。タスク側を待ち受け役として起こし直し、
         # この画面用に手足役も起こす(exe を入れ替えたので両方いったん止めてある)。
-        & schtasks /run /tn KidoAgent *> $null
+        cmd /c "schtasks /run /tn KidoAgent >nul 2>nul"
         Start-Sleep -Seconds 1
     }
     Start-Process -FilePath "$Dest\kido-agentd.exe" -WorkingDirectory $Dest

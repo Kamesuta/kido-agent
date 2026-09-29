@@ -75,14 +75,14 @@ try {
     Start-Sleep 2
     & "$dest\kido-agent.exe" boot on 2>&1 | Write-Host
     Start-Sleep 5
-    & schtasks /query /tn KidoAgent *> $null
+    cmd /c "schtasks /query /tn KidoAgent >nul 2>nul"
     if ($LASTEXITCODE -eq 0) {
         Write-Host 'S4U タスクの登録を確認'
         $log = Get-Content -Encoding UTF8 "$env:USERPROFILE\.kido-agent\kido-agent.log" -Raw
         Assert ($log -match '普通のユーザー') 'ログに権限降格が見えない'
         & "$dest\kido-agent.exe" boot off
         Start-Sleep 3
-        & schtasks /query /tn KidoAgent *> $null
+        cmd /c "schtasks /query /tn KidoAgent >nul 2>nul"
         Assert ($LASTEXITCODE -ne 0) 'boot off で起動時タスクが消えない'
         Write-Host '✓ ログイン前対応(S4U・権限降格)を確認'
     } else {
@@ -101,8 +101,8 @@ try {
     Assert (Test-Path $kido) '~/KidoButtons は残すはず'
     Write-Host '✓ Windows の通し試験に通りました'
 } finally {
-    & schtasks /end /tn KidoAgent *> $null
-    & schtasks /delete /tn KidoAgent /f *> $null
+    cmd /c "schtasks /end /tn KidoAgent >nul 2>nul"
+    cmd /c "schtasks /delete /tn KidoAgent /f >nul 2>nul"
     Get-Process kido-agentd -ErrorAction SilentlyContinue | Stop-Process -Force
     Write-Host '--- ログ ---'
     Get-Content -Encoding UTF8 "$env:USERPROFILE\.kido-agent\kido-agent.log" -ErrorAction SilentlyContinue

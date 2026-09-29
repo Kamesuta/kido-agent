@@ -12,6 +12,11 @@ set -eu
 BIN_DIR="$HOME/.local/bin"
 BIN="$BIN_DIR/kido-agent"
 CONTROL="http://127.0.0.1:47822/control"
+TOKEN_FILE="$HOME/.kido-agent/control.token"
+
+# control_token は待ち受け役が置いた合言葉を読む(まだ無ければ空)。/control は
+# これを添えないと断られる。同じ PC の別ユーザーのなりすまし避け。
+control_token() { cat "$TOKEN_FILE" 2>/dev/null || true; }
 LABEL="page.kido.agent"
 
 say() { printf '%s\n' "$*"; }
@@ -65,7 +70,7 @@ place() {
 }
 
 stop_manual() {
-	curl -fsS -m 3 -X POST -H 'X-Kido-Control: 1' "$CONTROL/stop" >/dev/null 2>&1 || true
+	curl -fsS -m 3 -X POST -H "X-Kido-Control: $(control_token)" "$CONTROL/stop" >/dev/null 2>&1 || true
 }
 
 autostart_darwin() {
@@ -148,7 +153,7 @@ path_hint() {
 wait_agent() {
 	i=0
 	while [ $i -lt 50 ]; do
-		status=$(curl -fsS -m 1 -H 'X-Kido-Control: 1' "$CONTROL/status" 2>/dev/null) && return 0
+		status=$(curl -fsS -m 1 -H "X-Kido-Control: $(control_token)" "$CONTROL/status" 2>/dev/null) && return 0
 		sleep 0.1 2>/dev/null || sleep 1
 		i=$((i + 1))
 	done
