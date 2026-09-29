@@ -42,15 +42,28 @@ try {
     Set-Content "$kido\90_bat\kido.toml" "require_login = true" -Encoding ASCII
     Set-Content "$kido\91_ps1\kido.toml" "require_login = true" -Encoding ASCII
 
-    # 手足役はまだいない(待ち受け役だけ)。session は false、require_login の操作は
-    # login が付き、run は needs_login で断られる。設定なしの操作は動く。
+    # 待ち受け役がログイン中の画面(セッション 0 以外)で動いていれば、それだけで
+    # ログイン中とみなし、require_login の操作も自分で動かす。CI のランナーは画面の
+    # あるセッションで動くことがあるので、どちらでも筋が通るかを見る。
+    # セッション 0 の待ち受け役(起動時タスク)は後の boot on の所で確かめる。
+    $lsess = @(Get-CimInstance Win32_Process -Filter "Name='kido-agentd.exe'" | ForEach-Object { $_.SessionId })
+    Write-Host ("待ち受け役のセッション: " + ($lsess -join ', '))
     (python ci/hub_stub.py hello) | Tee-Object -Variable helloOut | Write-Host
-    Assert ($helloOut -match '"session": false') '手足役がいないのに session が true'
     (python ci/hub_stub.py list) | Tee-Object -Variable listOut | Write-Host
-    Assert ($listOut -match '"id":"90_bat".*"login":true') 'login の印が無い'
-    (python ci/hub_stub.py run 90_bat) | Tee-Object -Variable runOut | Write-Host
-    Assert ($runOut -match 'needs_login') '手足役なしで needs_login にならない'
-    Assert (-not (Test-Path "$env:TEMP\kido-ci-bat.txt")) 'ログインなしで動いてしまった'
+    if ($lsess -contains 0) {
+        Assert ($helloOut -match '"session": false') 'セッション 0 で手足役がいないのに session が true'
+        Assert ($listOut -match '"id":"90_bat".*"login":true') 'login の印が無い'
+        (python ci/hub_stub.py run 90_bat) | Tee-Object -Variable runOut | Write-Host
+        Assert ($runOut -match 'needs_login') '手足役なしで needs_login にならない'
+        Assert (-not (Test-Path "$env:TEMP\kido-ci-bat.txt")) 'ログインなしで動いてしまった'
+    } else {
+        Assert ($helloOut -match '"session": true') 'ログイン中の画面の待ち受け役なのに session が false'
+        Assert (-not ($listOut -match '"id":"90_bat"[^}]*"login":true')) 'ログイン中なのに login の印が付いた'
+        python ci/hub_stub.py run 90_bat; Assert ($LASTEXITCODE -eq 0) 'run 90_bat(ログイン中の待ち受け役)'
+        Start-Sleep 3
+        Assert (Test-Path "$env:TEMP\kido-ci-bat.txt") 'ログイン中の待ち受け役が require_login の操作を動かさない'
+        Remove-Item "$env:TEMP\kido-ci-bat.txt"
+    }
     Assert (-not ($listOut -match '"id":"92_free"[^}]*"login":true')) '設定なしの操作に login が付いた'
     python ci/hub_stub.py run 92_free; Assert ($LASTEXITCODE -eq 0) 'run 92_free(ログインなし)'
     Start-Sleep 3
@@ -78,7 +91,8 @@ try {
     (python ci/hub_stub.py hello) | Tee-Object -Variable helloOut | Write-Host
     Assert ($helloOut -match '"session": true') '手足役がいるのに session が false'
 
-    # 手足役経由で、.bat(ShellExecute)と .ps1(窓なしの PowerShell)が実際に動く。
+    # .bat(ShellExecute)と .ps1(窓なしの PowerShell)が実際に動く。待ち受け役が
+    # ログイン中の画面にいれば自分で、セッション 0 なら手足役を経て動かす。
     python ci/hub_stub.py list; Assert ($LASTEXITCODE -eq 0) 'list'
     python ci/hub_stub.py run 90_bat; Assert ($LASTEXITCODE -eq 0) 'run 90_bat'
     python ci/hub_stub.py run 91_ps1; Assert ($LASTEXITCODE -eq 0) 'run 91_ps1'
@@ -145,6 +159,20 @@ try {
     Write-Host ("kido-agentd の整合性レベル: " + ($levels -join ', '))
     Assert (($levels -contains 'Medium') -and -not ($levels -contains 'High')) "権限が Medium まで下がっていない: $levels"
     Write-Host '✓ S4U タスクが Medium(普通のユーザー)の整合性で動いていることを確認'
+    # 起動時タスクの待ち受け役(セッション 0)に、ランナーの側から 2 つ目を起こすと
+    # 手足役になり、require_login の操作はそちらを経て動く。
+    Start-Process -FilePath "$dest\kido-agentd.exe" -WorkingDirectory $dest
+    foreach ($i in 1..50) {
+        if ((python ci/hub_stub.py hello) -match '"session": true') { break }
+        Start-Sleep -Milliseconds 200
+    }
+    Remove-Item "$env:TEMP\kido-ci-bat.txt" -ErrorAction SilentlyContinue
+    python ci/hub_stub.py run 90_bat; Assert ($LASTEXITCODE -eq 0) 'run 90_bat(起動時タスク + 手足役)'
+    Start-Sleep 5
+    Assert (Test-Path "$env:TEMP\kido-ci-bat.txt") '起動時タスクの待ち受け役から手足役を経て動かない'
+    $hlog = Get-Content -Raw -Encoding UTF8 "$env:USERPROFILE\.kido-agent\kido-agent.log"
+    Assert ($hlog -match '手足役: 実行しました 90_bat') '手足役を経ていない(起動時タスク)'
+    Write-Host '✓ 起動時タスクの待ち受け役から、手足役を経て動くことを確認'
     & "$dest\kido-agent.exe" boot off
     Start-Sleep 3
     cmd /c "schtasks /query /tn KidoAgent >nul 2>nul"

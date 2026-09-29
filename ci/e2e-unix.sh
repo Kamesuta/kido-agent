@@ -48,8 +48,8 @@ else
 	[ -f "$HOME/kido-ci-sh" ] && fail "ログインなしで動いてしまった"
 fi
 
-# 2 つ目のプロセスは手足役になる(Windows のログイン中の役の代わり)。Mac・Linux でも
-# 役の取り合いは同じ作りなので、手足役を経て動くことをここで確かめる。
+# 2 つ目のプロセスは手足役になる(役の取り合いは Windows と同じ作り)。
+# ログインしていない Linux では手足役を経て動き、ログイン中なら待ち受け役が動かす。
 "$bin" serve >/tmp/kido-helper.log 2>&1 &
 helper=$!
 i=0
@@ -66,7 +66,12 @@ python3 ci/hub_stub.py list
 python3 ci/hub_stub.py run 90_sh
 sleep 2
 [ -f "$HOME/kido-ci-sh" ] || fail ".sh が動いていない(手足役経由)"
-grep -q '手足役: 実行しました 90_sh' /tmp/kido-helper.log || fail "手足役を経ていない"
+# ログイン中(OS の決まり)なら待ち受け役が自分で動かし、手足役には流さない
+if [ $logged_in = 0 ]; then
+	grep -q '手足役: 実行しました 90_sh' /tmp/kido-helper.log || fail "手足役を経ていない"
+else
+	grep -q '手足役: 実行しました' /tmp/kido-helper.log && fail "ログイン中なのに手足役に流した"
+fi
 kill "$helper" 2>/dev/null || true
 "$bin" check || fail "check が失敗した"
 
