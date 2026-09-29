@@ -85,13 +85,29 @@ function Test-BootTask {
     return ($LASTEXITCODE -eq 0)
 }
 
-# Stop-Agent は動いている常駐アプリ(待ち受け役・手足役の両方)を止める。
+# Get-OwnAgentId は自分の利用者の kido-agentd のプロセス ID を返す。
+# Get-Process -Name だと同じ PC の別の利用者の常駐まで拾い、管理者でないと止められずに
+# 例外で止まる。-IncludeUserName も管理者が要る。起動時タスクの待ち受け役はセッション 0 で
+# 動くのでセッション ID でも分けられない。そこで CIM で持ち主の SID を尋ねて自分と比べる
+# (別の利用者のプロセスは持ち主を答えないので、それも除かれる)。
+function Get-OwnAgentId {
+    $me = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    foreach ($p in @(Get-CimInstance Win32_Process -Filter "Name='kido-agentd.exe'" -ErrorAction SilentlyContinue)) {
+        $o = Invoke-CimMethod -InputObject $p -MethodName GetOwnerSid -ErrorAction SilentlyContinue
+        if ($o -and $o.ReturnValue -eq 0 -and $o.Sid -eq $me) { $p.ProcessId }
+    }
+}
+
+# Stop-Agent は自分の利用者の常駐アプリ(待ち受け役・手足役の両方)を止める。
 # 動いている exe は上書きできないため。起動時タスクがあれば、その実体も止める。
 function Stop-Agent {
     if (Test-BootTask) { cmd /c "schtasks /end /tn KidoAgent >nul 2>nul" }
-    Get-Process -Name 'kido-agentd' -ErrorAction SilentlyContinue | Stop-Process -Force
+    foreach ($id in @(Get-OwnAgentId)) {
+        # 止める間際に自分で終わったものは見逃す(止まっていればよい)
+        try { Stop-Process -Id $id -Force -ErrorAction Stop } catch { }
+    }
     foreach ($i in 1..30) {
-        if (-not (Get-Process -Name 'kido-agentd' -ErrorAction SilentlyContinue)) { break }
+        if (@(Get-OwnAgentId).Count -eq 0) { break }
         Start-Sleep -Milliseconds 100
     }
     Start-Sleep -Milliseconds 300
