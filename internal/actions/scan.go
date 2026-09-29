@@ -16,14 +16,15 @@ type Action struct {
 	Icon    string
 	Confirm *string // nil は「確認なし」、"" は「本文なしで確認する」
 	Broken  bool
-	// BeforeLogin が true の操作は、誰もログインしていない(手足役がいない)ときも
-	// 画面なしで動かせる。既定は false(ログインしてから使う)。
-	BeforeLogin bool
-	Dir         string
-	Run         string   // 実行するファイル名(Dir の中)
-	Invalid     string   // ID として使えない理由。あれば本体へは送らない
-	Problems    []string // 押せない理由(Broken のとき)
-	Warnings    []string // 動くが気を付けてほしいこと
+	// RequireLogin が true の操作は、誰もログインしていない(手足役がいない)ときは
+	// 押せない。既定の false なら、ログイン前でも待ち受け役が画面なしで動かす
+	// (電源を入れてサーバーを立ち上げる、のような使い方が設定なしで動くように)。
+	RequireLogin bool
+	Dir          string
+	Run          string   // 実行するファイル名(Dir の中)
+	Invalid      string   // ID として使えない理由。あれば本体へは送らない
+	Problems     []string // 押せない理由(Broken のとき)
+	Warnings     []string // 動くが気を付けてほしいこと
 }
 
 // 先頭の「番号_」は並び順のためのものなので、表示名からは外す。
@@ -86,11 +87,11 @@ func loadAction(dir, goos string) Action {
 		a.fail("実行できるファイルが 2 つ以上あります("+strings.Join(runnables, "、")+")",
 			"どれを動かすか kido.toml に書いてください。例: run = \""+runnables[0]+"\"")
 	}
-	// ログイン前に動かす約束なのに、画面がいるものを指していたら気づけるようにする。
-	// ログインしていないと画面が無く、ショートやアプリは開けないことが多い。
-	if a.BeforeLogin && !a.Broken && needsScreen(a.Run) {
-		a.warn("before_login = true ですが " + a.Run +
-			" は画面がいるので、ログイン前は開けないことがあります")
+	// 画面のいる形式なのに require_login が無いと、ログイン前に押したとき
+	// 画面のないところで起動して見えない。窓が要るなら require_login を勧める。
+	if !a.RequireLogin && !a.Broken && needsScreen(a.Run) {
+		a.warn("ログイン前に押すと、画面のないところで起動します(見えません)。" +
+			"窓が要るなら kido.toml に require_login = true を書いてください")
 	}
 	return a
 }

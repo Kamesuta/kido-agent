@@ -20,10 +20,10 @@ func TestListCountLimit(t *testing.T) {
 
 func TestListBodyLoginMarking(t *testing.T) {
 	list := []Action{
-		{ID: "10_sleep", Name: "s", BeforeLogin: true},
-		{ID: "20_lock", Name: "l"},
+		{ID: "10_sleep", Name: "s"},
+		{ID: "20_lock", Name: "l", RequireLogin: true},
 	}
-	// ログインしていない(手足役がいない): before_login でないものに login を付ける
+	// ログインしていない(手足役がいない): require_login のものにだけ login を付ける
 	body, _ := ListBody(list, false)
 	if got := string(body); got != `{"actions":[{"id":"10_sleep","name":"s"},{"id":"20_lock","name":"l","login":true}]}` {
 		t.Fatalf("login 未ログイン時:\n%s", got)

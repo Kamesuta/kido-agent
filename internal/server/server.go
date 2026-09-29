@@ -52,7 +52,7 @@ func newAgent(keyPath, actionsDir, goos, version string, key []byte) *agent {
 func (a *agent) sessionActive() bool { return a.hub.active() }
 
 // execute は操作を動かす。手足役がいればそちらへ流し(ログイン中の見た目・窓で動く)、
-// いなければ待ち受け役が自分で画面なしに動かす(before_login の操作だけここに来る)。
+// いなければ待ち受け役が自分で画面なしに動かす(require_login でない操作だけここに来る)。
 func (a *agent) execute(t actions.Action, viaHelper bool) {
 	if viaHelper {
 		if err := a.hub.dispatch(t.ID, t.Dir, t.Run); err != nil {

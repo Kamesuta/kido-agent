@@ -148,33 +148,45 @@ func TestScanMissingDir(t *testing.T) {
 	}
 }
 
-func TestBeforeLoginToml(t *testing.T) {
+func TestRequireLoginToml(t *testing.T) {
 	root := t.TempDir()
-	d := mkAction(t, root, "10_sleep", "sleep.ps1")
-	writeFile(t, d+"/kido.toml", "before_login = true\n")
+	d := mkAction(t, root, "20_lock", "lock.ps1")
+	writeFile(t, d+"/kido.toml", "require_login = true\n")
 	a := scanOne(t, root, "windows")
-	if !a.BeforeLogin || a.Broken || len(a.Warnings) != 0 {
+	if !a.RequireLogin || a.Broken || len(a.Warnings) != 0 {
 		t.Fatalf("%+v", a)
 	}
-	// 既定は false(kido.toml が無い)
+	// 既定は false(kido.toml が無い)。ログイン前でも動かせる
 	root2 := t.TempDir()
-	mkAction(t, root2, "20_lock", "lock.ps1")
-	if scanOne(t, root2, "windows").BeforeLogin {
+	mkAction(t, root2, "60_server", "start.bat")
+	if scanOne(t, root2, "windows").RequireLogin {
 		t.Fatal("既定は false のはず")
+	}
+	// 前の版の before_login は知らないキーとして警告だけ
+	root3 := t.TempDir()
+	d = mkAction(t, root3, "10_sleep", "sleep.ps1")
+	writeFile(t, d+"/kido.toml", "before_login = true\n")
+	if a := scanOne(t, root3, "windows"); a.Broken || len(a.Warnings) != 1 || !contains(a.Warnings[0], "before_login") {
+		t.Fatalf("%+v", a)
 	}
 }
 
-func TestBeforeLoginScreenWarning(t *testing.T) {
+func TestScreenWarningWithoutRequireLogin(t *testing.T) {
 	root := t.TempDir()
 	d := mkAction(t, root, "50_game", "game.lnk")
-	writeFile(t, d+"/kido.toml", "before_login = true\n")
 	a := scanOne(t, root, "windows")
-	if !a.BeforeLogin || len(a.Warnings) != 1 || !contains(a.Warnings[0], "画面がいる") {
+	if len(a.Warnings) != 1 || !contains(a.Warnings[0], "見えません") || !contains(a.Warnings[0], "require_login = true") {
 		t.Fatalf("%+v", a)
 	}
-	// before_login でなければ警告しない
-	writeFile(t, d+"/kido.toml", "")
+	// require_login を付ければ警告しない
+	writeFile(t, d+"/kido.toml", "require_login = true\n")
 	if a := scanOne(t, root, "windows"); len(a.Warnings) != 0 {
+		t.Fatalf("%+v", a)
+	}
+	// スクリプトは画面が要らないので警告しない
+	root2 := t.TempDir()
+	mkAction(t, root2, "60_server", "start.bat")
+	if a := scanOne(t, root2, "windows"); len(a.Warnings) != 0 {
 		t.Fatalf("%+v", a)
 	}
 }

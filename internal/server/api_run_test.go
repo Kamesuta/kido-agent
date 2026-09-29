@@ -16,8 +16,8 @@ func runReq(nonce, id string) string {
 
 func TestRunExecutesAfterReply(t *testing.T) {
 	ta := pairedAgent(t)
-	d := mkAction(t, ta.actionsDir, "10_sleep", "sleep.ps1", "readme.txt")
-	writeFile(t, d+"/kido.toml", "before_login = true\n") // ログインなしで、待ち受け役が自分で動かす
+	// kido.toml なし(既定)。ログインしていなくても待ち受け役が自分で動かす
+	mkAction(t, ta.actionsDir, "10_sleep", "sleep.ps1", "readme.txt")
 	var order []string
 	launch := ta.launch
 	ta.launch = func(a actions.Action) error { order = append(order, "launch"); return launch(a) }
@@ -93,8 +93,9 @@ func TestListLimits(t *testing.T) {
 
 func TestRunNeedsLoginWhenNotLoggedIn(t *testing.T) {
 	ta := pairedAgent(t)
-	// ログインしていない。before_login でない操作は動かせない
-	mkAction(t, ta.actionsDir, "20_lock", "lock.ps1")
+	// ログインしていない。require_login の操作は動かせない
+	d := mkAction(t, ta.actionsDir, "20_lock", "lock.ps1")
+	writeFile(t, d+"/kido.toml", "require_login = true\n")
 	_, n := ta.hello(t)
 	r := call(t, ta.apiHandler(), "POST", "/v1/run", runReq(n, "20_lock"))
 	if r.status != 409 || !strings.Contains(r.body, "needs_login") {
@@ -140,8 +141,8 @@ func TestRunViaHelperWhenLoggedIn(t *testing.T) {
 func TestHelloAndListSessionFlag(t *testing.T) {
 	ta := pairedAgent(t)
 	mkAction(t, ta.actionsDir, "10_sleep", "sleep.ps1")
-	writeFile(t, ta.actionsDir+"/10_sleep/kido.toml", "before_login = true\n")
 	mkAction(t, ta.actionsDir, "20_lock", "lock.ps1")
+	writeFile(t, ta.actionsDir+"/20_lock/kido.toml", "require_login = true\n")
 
 	// ログインしていない: hello の session は false、list の 20_lock に login
 	res := call(t, ta.apiHandler(), "GET", "/v1/hello", "")
@@ -151,10 +152,10 @@ func TestHelloAndListSessionFlag(t *testing.T) {
 	_, n := ta.hello(t)
 	lr := call(t, ta.apiHandler(), "POST", "/v1/list", listReq(n, auth.Sign(testKey, "list", n)))
 	if !strings.Contains(lr.body, `"id":"20_lock","name":"lock","login":true`) {
-		t.Fatalf("before_login でない操作に login が要る: %s", lr.body)
+		t.Fatalf("require_login の操作に login が要る: %s", lr.body)
 	}
 	if strings.Contains(lr.body, `"id":"10_sleep","name":"sleep","login":true`) {
-		t.Fatalf("before_login の操作に login は付けない: %s", lr.body)
+		t.Fatalf("設定なしの操作に login は付けない: %s", lr.body)
 	}
 
 	// ログイン中: session true、login は付かない

@@ -12,13 +12,13 @@ type wireAction struct {
 	Confirm *string `json:"confirm,omitempty"`
 	Broken  bool    `json:"broken,omitempty"`
 	// Login は「今は押せない(ログインが要る)」印。手足役がいないときに、
-	// before_login でない操作へ付ける。手足役がいれば付けない。
+	// require_login の操作へ付ける。手足役がいれば付けない。
 	Login bool `json:"login,omitempty"`
 }
 
 // ListBody は本体へ送る一覧の本文を作る。数の上限を超えた分と、本文が
 // 4096 バイトに収まらない分は後ろから落とす。sent は実際に載せた数。
-// sessionActive が false(誰もログインしていない)なら、before_login でない
+// sessionActive が false(誰もログインしていない)なら、require_login の
 // 操作に「login」の印を付ける。
 func ListBody(actions []Action, sessionActive bool) (body []byte, sent int) {
 	var wire []wireAction
@@ -26,7 +26,7 @@ func ListBody(actions []Action, sessionActive bool) (body []byte, sent int) {
 		if a.Invalid != "" {
 			continue
 		}
-		login := !sessionActive && !a.BeforeLogin
+		login := !sessionActive && a.RequireLogin
 		wire = append(wire, wireAction{ID: a.ID, Name: a.Name, Icon: a.Icon,
 			Confirm: a.Confirm, Broken: a.Broken, Login: login})
 	}

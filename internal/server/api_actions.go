@@ -51,8 +51,8 @@ func (a *agent) handleRun(w http.ResponseWriter, r *http.Request) {
 	case target.Broken:
 		writeError(w, http.StatusConflict, "broken_action")
 		return
-	case !session && !target.BeforeLogin:
-		// 誰もログインしておらず、ログイン前に使ってよい操作でもない。
+	case !session && target.RequireLogin:
+		// 誰もログインしておらず、ログインしてから使う約束(require_login)の操作。
 		writeError(w, http.StatusConflict, "needs_login")
 		return
 	}
