@@ -1,6 +1,7 @@
 package launch
 
 import (
+	"errors"
 	"path/filepath"
 	"strings"
 )
@@ -16,4 +17,17 @@ func Run(dir, file string) error {
 		return startDetached(dir, "gio", "launch", path)
 	}
 	return startDetached(dir, path)
+}
+
+// RunWait は終わるまで待って終了コードを返す(kido.toml の wait)。
+// .desktop は gio に渡すと終わりが分からないので断る(check でも知らせる)。
+func RunWait(dir, file string) (int, error) {
+	path := filepath.Join(dir, file)
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".sh":
+		return runWaited(dir, "/bin/sh", path)
+	case ".desktop":
+		return 0, errors.New("終わるのを待てない種類です: " + file)
+	}
+	return runWaited(dir, path)
 }
