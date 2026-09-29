@@ -29,6 +29,24 @@ func RemoveAutostart(out io.Writer) {
 	if appdata, err := os.UserConfigDir(); err == nil {
 		os.Remove(filepath.Join(appdata, `Microsoft\Windows\Start Menu\Programs`, shortcutName))
 	}
+	removeBootTask(out)
+}
+
+// removeBootTask は起動時タスク KidoAgent を管理者(UAC)で消す。
+// 断られても取り除きは続け、残っている旨と消し方を伝える。
+func removeBootTask(out io.Writer) {
+	cmd := exec.Command("schtasks", "/query", "/tn", "KidoAgent")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NO_WINDOW}
+	if cmd.Run() != nil {
+		return // タスクが無ければ何もしない
+	}
+	ps := "$p = Start-Process schtasks -Verb RunAs -Wait -PassThru -ArgumentList '/delete','/tn','KidoAgent','/f'; exit $p.ExitCode"
+	del := exec.Command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps)
+	del.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NO_WINDOW}
+	if err := del.Run(); err != nil {
+		fmt.Fprintln(out, "! 起動時タスク KidoAgent が残っています。管理者の PowerShell で消せます:")
+		fmt.Fprintln(out, "    schtasks /delete /tn KidoAgent /f")
+	}
 }
 
 // RemoveProgram はインストール先のフォルダを消す。動いている自分自身は
