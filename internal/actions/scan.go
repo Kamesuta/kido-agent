@@ -11,19 +11,19 @@ const TomlName = "kido.toml"
 
 // Action は操作フォルダ 1 つぶん。本体へ送る項目のほか、check で見せる理由も持つ。
 type Action struct {
-	ID       string
-	Name     string
-	Icon     string
-	Confirm  *string // nil は「確認なし」、"" は「本文なしで確認する」
-	Broken   bool
+	ID      string
+	Name    string
+	Icon    string
+	Confirm *string // nil は「確認なし」、"" は「本文なしで確認する」
+	Broken  bool
 	// BeforeLogin が true の操作は、誰もログインしていない(手足役がいない)ときも
 	// 画面なしで動かせる。既定は false(ログインしてから使う)。
 	BeforeLogin bool
 	Dir         string
-	Run      string   // 実行するファイル名(Dir の中)
-	Invalid  string   // ID として使えない理由。あれば本体へは送らない
-	Problems []string // 押せない理由(Broken のとき)
-	Warnings []string // 動くが気を付けてほしいこと
+	Run         string   // 実行するファイル名(Dir の中)
+	Invalid     string   // ID として使えない理由。あれば本体へは送らない
+	Problems    []string // 押せない理由(Broken のとき)
+	Warnings    []string // 動くが気を付けてほしいこと
 }
 
 // 先頭の「番号_」は並び順のためのものなので、表示名からは外す。

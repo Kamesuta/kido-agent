@@ -12,8 +12,8 @@ import (
 )
 
 type kidoToml struct {
-	Name    *string `toml:"name"`
-	Icon    *string `toml:"icon"`
+	Name        *string `toml:"name"`
+	Icon        *string `toml:"icon"`
 	Confirm     *string `toml:"confirm"`
 	Run         *string `toml:"run"`
 	BeforeLogin *bool   `toml:"before_login"`

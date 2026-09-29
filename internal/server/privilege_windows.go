@@ -3,7 +3,9 @@ package server
 import (
 	"log"
 	"os"
+	"strings"
 	"syscall"
+	"unicode/utf16"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -29,7 +31,16 @@ var (
 // 動くが、操作は普通のユーザーの権限で足りる(SetSuspendState・shutdown.exe は
 // Users が持つ SeShutdownPrivilege で効く)。子は昇格していないので、これは繰り返さない。
 // 起動し直したら true(親は終わってよい)。
+// elevatedChildEnv は「これは権限を下げて起動し直した子」の目印。二重に下げて
+// 起動し直す無限ループを防ぐ。UAC を切った環境では、権限を下げたトークンでも
+// IsElevated が真のままになることがあるので、昇格の判定だけには頼らない。
+const elevatedChildEnv = "KIDO_AGENT_ELEVATED_CHILD"
+
 func dropPrivilege() bool {
+	if os.Getenv(elevatedChildEnv) == "1" {
+		log.Printf("権限: 普通のユーザー(起動し直し済み)")
+		return false
+	}
 	token := windows.GetCurrentProcessToken()
 	if !token.IsElevated() {
 		log.Printf("権限: 普通のユーザー")
@@ -81,20 +92,33 @@ func relaunchAs(token windows.Token) error {
 	if err != nil {
 		return err
 	}
-	// 普通のユーザーの環境を作る(管理者の環境変数を持ち込まない)。
-	var envBlock *uint16
-	if err := windows.CreateEnvironmentBlock(&envBlock, token, false); err == nil {
-		defer windows.DestroyEnvironmentBlock(envBlock)
-	}
+	// 今の環境に目印を足して渡す。目印があれば、子は二度と起動し直さない。
+	block := envBlockWithGuard()
 	si := &windows.StartupInfo{Cb: uint32(unsafe.Sizeof(windows.StartupInfo{}))}
 	var pi windows.ProcessInformation
 	err = windows.CreateProcessAsUser(token, nil, argv, nil, nil, false,
 		windows.CREATE_UNICODE_ENVIRONMENT|windows.CREATE_NO_WINDOW|syscall.CREATE_NEW_PROCESS_GROUP,
-		envBlock, nil, si, &pi)
+		block, nil, si, &pi)
 	if err != nil {
 		return err
 	}
 	windows.CloseHandle(pi.Thread)
 	windows.CloseHandle(pi.Process)
 	return nil
+}
+
+// envBlockWithGuard は今の環境変数に目印を足し、UTF-16 の環境ブロック
+// (二重ヌル終端)にする。目印があれば、起動し直した子は権限降格を繰り返さない。
+func envBlockWithGuard() *uint16 {
+	env := append(os.Environ(), elevatedChildEnv+"=1")
+	var buf []uint16
+	for _, e := range env {
+		if strings.IndexByte(e, 0) >= 0 {
+			continue
+		}
+		buf = append(buf, utf16.Encode([]rune(e))...)
+		buf = append(buf, 0)
+	}
+	buf = append(buf, 0)
+	return &buf[0]
 }
