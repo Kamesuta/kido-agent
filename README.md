@@ -62,6 +62,7 @@ KIDO_AGENT_TARBALL=/path/kido-agent-darwin-arm64.tar.gz sh install/install.sh
 - `.` で始まるフォルダは無視する
 - 本体からの要求のたびに読み直すので、足したり直したりしても再起動は要らない
 - 一覧に載るのは 24 個まで。フォルダ名は 64 バイトまで
+- 自分で足すときの見本は [`examples/`](examples/)(マイクラのサーバーの起動・停止など)
 
 ### kido.toml
 
