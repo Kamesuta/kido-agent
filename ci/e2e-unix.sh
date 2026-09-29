@@ -15,9 +15,16 @@ bin="$HOME/.local/bin/kido-agent"
 [ "$(find "$HOME/KidoButtons" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 4 ] || fail "同梱の操作が 4 つ無い"
 [ -f "$HOME/KidoButtons/使いかた.txt" ] || fail "使いかた.txt が無い"
 
-# before_login なしの試験用の操作。手足役がいないと動かせないことをまず確かめる。
+# require_login = true の試験用の操作。手足役がいないと動かせないことをまず確かめる。
 mkdir "$HOME/KidoButtons/90_sh"
 printf 'touch "%s/kido-ci-sh"\n' "$HOME" >"$HOME/KidoButtons/90_sh/touch.sh"
+printf 'require_login = true\n' >"$HOME/KidoButtons/90_sh/kido.toml"
+# 設定なしの操作は、手足役がいなくても待ち受け役が動かす
+mkdir "$HOME/KidoButtons/92_free"
+printf 'touch "%s/kido-ci-free"\n' "$HOME" >"$HOME/KidoButtons/92_free/touch.sh"
+python3 ci/hub_stub.py run 92_free || fail "設定なしの操作が手足役なしで動かない"
+sleep 2
+[ -f "$HOME/kido-ci-free" ] || fail "設定なしの操作がログインなしで動いていない"
 python3 ci/hub_stub.py hello | grep -q '"session": false' || fail "手足役がいないのに session が true"
 python3 ci/hub_stub.py run 90_sh 2>&1 | grep -q needs_login || fail "手足役なしで needs_login にならない"
 [ -f "$HOME/kido-ci-sh" ] && fail "ログインなしで動いてしまった"

@@ -33,13 +33,17 @@ try {
     Assert (Test-Path "$kido\使いかた.txt") '使いかた.txt が無い'
     Assert ((Get-Item -Force "$env:USERPROFILE\.kido-agent").Attributes -band [IO.FileAttributes]::Hidden) '鍵の置き場が隠れていない'
 
-    # 試験用の操作(before_login なし)。手足役がいないと動かせないことを先に確かめる。
-    New-Item -ItemType Directory "$kido\90_bat", "$kido\91_ps1" | Out-Null
+    # 試験用の操作。90・91 は require_login = true(手足役がいないと動かせない)、
+    # 92 は設定なし(ログインしていなくても待ち受け役が画面なしで動かす)。
+    New-Item -ItemType Directory "$kido\90_bat", "$kido\91_ps1", "$kido\92_free" | Out-Null
     Set-Content "$kido\90_bat\touch.bat" "echo ok> `"%TEMP%\kido-ci-bat.txt`"" -Encoding ASCII
     Set-Content "$kido\91_ps1\touch.ps1" "Set-Content `"`$env:TEMP\kido-ci-ps1.txt`" ok" -Encoding ASCII
+    Set-Content "$kido\92_free\touch.bat" "echo ok> `"%TEMP%\kido-ci-free.txt`"" -Encoding ASCII
+    Set-Content "$kido\90_bat\kido.toml" "require_login = true" -Encoding ASCII
+    Set-Content "$kido\91_ps1\kido.toml" "require_login = true" -Encoding ASCII
 
-    # 手足役はまだいない(待ち受け役だけ)。session は false、before_login でない操作は
-    # login が付き、run は needs_login で断られる。
+    # 手足役はまだいない(待ち受け役だけ)。session は false、require_login の操作は
+    # login が付き、run は needs_login で断られる。設定なしの操作は動く。
     (python ci/hub_stub.py hello) | Tee-Object -Variable helloOut | Write-Host
     Assert ($helloOut -match '"session": false') '手足役がいないのに session が true'
     (python ci/hub_stub.py list) | Tee-Object -Variable listOut | Write-Host
@@ -47,6 +51,10 @@ try {
     (python ci/hub_stub.py run 90_bat) | Tee-Object -Variable runOut | Write-Host
     Assert ($runOut -match 'needs_login') '手足役なしで needs_login にならない'
     Assert (-not (Test-Path "$env:TEMP\kido-ci-bat.txt")) 'ログインなしで動いてしまった'
+    Assert (-not ($listOut -match '"id":"92_free"[^}]*"login":true')) '設定なしの操作に login が付いた'
+    python ci/hub_stub.py run 92_free; Assert ($LASTEXITCODE -eq 0) 'run 92_free(ログインなし)'
+    Start-Sleep 3
+    Assert (Test-Path "$env:TEMP\kido-ci-free.txt") '設定なしの操作がログインなしで動いていない'
 
     # 手足役(2 つ目の kido-agentd)を起こす。これはログイン中の画面を持つ役。
     Start-Process -FilePath "$dest\kido-agentd.exe" -WorkingDirectory $dest
