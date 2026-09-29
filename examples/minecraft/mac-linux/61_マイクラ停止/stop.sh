@@ -4,6 +4,13 @@
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 export PATH
 
+# tmux が無いと、サーバーが動いているかも確かめられない。「止まった」と返さず、
+# 理由を残して失敗としてスマホに知らせる
+if ! command -v tmux >/dev/null 2>&1; then
+  echo "tmux が見つかりません。Mac は brew install tmux、Ubuntu は sudo apt install tmux で入れてください" >&2
+  exit 1
+fi
+
 # もう止まっていれば何もしない
 tmux has-session -t mc 2>/dev/null || exit 0
 # 中を見たまま離れてスクロール中だったり、打ちかけの文字があったりすると stop が届かない
