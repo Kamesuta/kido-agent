@@ -55,6 +55,12 @@ try {
     python ci/hub_stub.py run 92_free; Assert ($LASTEXITCODE -eq 0) 'run 92_free(ログインなし)'
     Start-Sleep 3
     Assert (Test-Path "$env:TEMP\kido-ci-free.txt") '設定なしの操作がログインなしで動いていない'
+    # wait = true の操作は、終わるまで待って終了コードで答える(ログインなし=待ち受け役)。
+    New-Item -ItemType Directory "$kido\93_wait" | Out-Null
+    Set-Content "$kido\93_wait\fail.bat" "@echo off`r`nexit /b 3" -Encoding ASCII
+    Set-Content "$kido\93_wait\kido.toml" "wait = true" -Encoding ASCII
+    (python ci/hub_stub.py run 93_wait) | Tee-Object -Variable waitOut | Write-Host
+    Assert ($waitOut -match '"code":3') 'wait の操作が終了コードを返さない(ログインなし)'
 
     # 手足役(2 つ目の kido-agentd)を起こす。これはログイン中の画面を持つ役。
     Start-Process -FilePath "$dest\kido-agentd.exe" -WorkingDirectory $dest
@@ -72,6 +78,8 @@ try {
     Start-Sleep 5
     Assert (Test-Path "$env:TEMP\kido-ci-bat.txt") '.bat が動いていない(手足役経由)'
     Assert (Test-Path "$env:TEMP\kido-ci-ps1.txt") '.ps1 が動いていない(手足役経由)'
+    (python ci/hub_stub.py run 93_wait) | Tee-Object -Variable waitOut | Write-Host
+    Assert ($waitOut -match '"code":3') 'wait の操作が終了コードを返さない(手足役経由)'
 
     & "$dest\kido-agent.exe" check
     Assert ($LASTEXITCODE -eq 0) 'check が失敗した'
