@@ -61,17 +61,22 @@ function Get-Package([string]$Work) {
     return $daemon.DirectoryName
 }
 
-# Stop-Agent は動いている常駐アプリを止める。動いている exe は上書きできないため。
+# Test-BootTask は起動時タスク KidoAgent があるかを名指しで確かめる
+# (壊れた別タスクの XML でワイルドカードが例外になる実績があるので名指し)。
+function Test-BootTask {
+    & schtasks /query /tn KidoAgent *> $null
+    return ($LASTEXITCODE -eq 0)
+}
+
+# Stop-Agent は動いている常駐アプリ(待ち受け役・手足役の両方)を止める。
+# 動いている exe は上書きできないため。起動時タスクがあれば、その実体も止める。
 function Stop-Agent {
-    try {
-        Invoke-WebRequest -UseBasicParsing -Method Post -Uri 'http://127.0.0.1:47822/control/stop' `
-            -Headers @{ 'X-Kido-Control' = '1' } -TimeoutSec 3 | Out-Null
-    } catch {}
+    if (Test-BootTask) { & schtasks /end /tn KidoAgent *> $null }
+    Get-Process -Name 'kido-agentd' -ErrorAction SilentlyContinue | Stop-Process -Force
     foreach ($i in 1..30) {
-        if (-not (Get-Process -Name 'kido-agentd' -ErrorAction SilentlyContinue)) { return }
+        if (-not (Get-Process -Name 'kido-agentd' -ErrorAction SilentlyContinue)) { break }
         Start-Sleep -Milliseconds 100
     }
-    Get-Process -Name 'kido-agentd' -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep -Milliseconds 300
 }
 
@@ -144,6 +149,7 @@ New-Item -ItemType Directory -Path $work | Out-Null
 try {
     Write-Host '起動丸エージェントを入れます。'
     $pkg = Get-Package $work
+    $hadTask = Test-BootTask
     Stop-Agent
     New-Item -ItemType Directory -Path $Dest -Force | Out-Null
     Copy-Item -Path (Join-Path $pkg 'kido-agent*.exe') -Destination $Dest -Force
@@ -155,6 +161,12 @@ try {
     Write-Host ''
     Write-Host '常駐アプリを起動します。「Windows セキュリティ」の確認が出たら「許可」を押してください。'
     Write-Host '(起動丸の本体から、この PC に届くようにするためです)'
+    if ($hadTask) {
+        # もともとログイン前対応(起動時タスク)がある。タスク側を待ち受け役として起こし直し、
+        # この画面用に手足役も起こす(exe を入れ替えたので両方いったん止めてある)。
+        & schtasks /run /tn KidoAgent *> $null
+        Start-Sleep -Seconds 1
+    }
     Start-Process -FilePath "$Dest\kido-agentd.exe" -WorkingDirectory $Dest
     $status = Wait-Agent
     if (-not $status) { throw '常駐アプリが起動しませんでした。ログ: %USERPROFILE%\.kido-agent\kido-agent.log' }
@@ -170,6 +182,19 @@ try {
     & "$Dest\kido-agent.exe" open | Out-Null
     Write-Host ''
     Write-Host '操作フォルダ(~/KidoButtons)を開きました。ショートカットを入れたフォルダを作ると、スマホに操作が増えます。'
+
+    if ($hadTask) {
+        Write-Host 'ログイン前(電源を入れただけ)でも使えます(設定済み)。'
+    } else {
+        Write-Host ''
+        $ans = Read-Host 'ログイン前(電源を入れただけ)でも使えるようにしますか? [Y/n]'
+        if ($ans -notmatch '^[nN]') {
+            Write-Host 'このあと管理者の確認(UAC)が出ます。「はい」を押してください。'
+            & "$Dest\kido-agent.exe" boot on
+        } else {
+            Write-Host 'あとから設定できます: kido-agent boot on'
+        }
+    }
     Write-Host '困ったときは: kido-agent check'
 } catch {
     Write-Host "インストールに失敗しました: $($_.Exception.Message)" -ForegroundColor Red

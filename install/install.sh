@@ -184,7 +184,28 @@ main() {
 	say ""
 	say "操作フォルダ(~/KidoButtons)を開きました。スクリプトやアプリを入れたフォルダを作ると、スマホに操作が増えます。"
 	path_hint
+	offer_boot
 	say "困ったときは: kido-agent check"
+}
+
+# offer_boot は、ログイン前(電源を入れただけ)でも使うか尋ねる。
+# Linux だけ(Mac は FileVault のため非対応)。すでに設定済みなら尋ねない。
+offer_boot() {
+	[ "$os" = linux ] || return 0
+	if "$BIN" boot status 2>/dev/null | grep -q "動きます"; then
+		say "ログイン前(電源を入れただけ)でも使えます(設定済み)。"
+		return 0
+	fi
+	if ! (exec </dev/tty) 2>/dev/null; then
+		say "ログイン前でも使うには: kido-agent boot on"
+		return 0
+	fi
+	printf "ログイン前(電源を入れただけ)でも使えるようにしますか? [Y/n] "
+	read -r ans </dev/tty || ans=y
+	case "$ans" in
+	[nN]*) say "あとから設定できます: kido-agent boot on" ;;
+	*) "$BIN" boot on || true ;;
+	esac
 }
 
 main "$@"
