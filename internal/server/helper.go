@@ -65,7 +65,9 @@ func (h *helperHub) active() bool {
 
 // poll は手足役の「次の仕事をください」に応える。仕事が来れば渡し、来なければ
 // pollHold で空応答を返す(手足役はすぐつなぎ直す)。取りに来たこと自体を控える。
-func (h *helperHub) poll() *helperJob {
+// 手足役が去った(ctx が終わった)つなぎは仕事を受け取らない。受け取ると誰にも届かず、
+// wait の操作は時間切れが無いので、いつまでも待つことになる。
+func (h *helperHub) poll(ctx context.Context) *helperJob {
 	h.mu.Lock()
 	h.lastPoll = h.now()
 	h.mu.Unlock()
@@ -77,6 +79,8 @@ func (h *helperHub) poll() *helperJob {
 		h.mu.Unlock()
 		return j
 	case <-time.After(h.pollHold):
+		return nil
+	case <-ctx.Done():
 		return nil
 	}
 }

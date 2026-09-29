@@ -23,7 +23,7 @@ func TestHubDispatchToPoller(t *testing.T) {
 		done <- err
 	}()
 	// 手足役が取りに来る
-	j := h.poll()
+	j := h.poll(context.Background())
 	if j == nil || j.ID != "10_sleep#1" || j.Run != "sleep.ps1" {
 		t.Fatalf("仕事が渡らない: %+v", j)
 	}
@@ -51,7 +51,7 @@ func TestHubResultError(t *testing.T) {
 		_, err := h.dispatch(context.Background(), "x", "/d", "r", false)
 		done <- err
 	}()
-	j := h.poll()
+	j := h.poll(context.Background())
 	h.complete(j.ID, helperResult{Err: "起動に失敗"})
 	if err := <-done; err == nil || err.Error() != "起動に失敗" {
 		t.Fatalf("エラーが返るはず: %v", err)
@@ -61,7 +61,7 @@ func TestHubResultError(t *testing.T) {
 func TestHubPollTimeoutEmpty(t *testing.T) {
 	h := fastHub()
 	start := time.Now()
-	if j := h.poll(); j != nil {
+	if j := h.poll(context.Background()); j != nil {
 		t.Fatal("仕事が無いのに返った")
 	}
 	if time.Since(start) < h.pollHold {
@@ -94,7 +94,7 @@ func TestHubWaitHasNoTimeoutButStopsOnCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { _, err := h.dispatch(ctx, "x", "/d", "r", true); done <- err }()
-	j := h.poll()
+	j := h.poll(context.Background())
 	select {
 	case err := <-done:
 		t.Fatalf("wait なのに時間切れになった: %v", err)

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -74,7 +75,7 @@ func TestRunWaitViaHelper(t *testing.T) {
 	ta.setLoggedIn(true)
 	waitAction(t, ta, "90_build", "build.bat")
 	go func() {
-		if j := ta.hub.poll(); j != nil && j.Wait {
+		if j := ta.hub.poll(context.Background()); j != nil && j.Wait {
 			ta.hub.complete(j.ID, helperResult{Code: 5})
 		}
 	}()

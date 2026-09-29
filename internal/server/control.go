@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"kido-agent/internal/auth"
 	"kido-agent/internal/control"
@@ -32,7 +33,10 @@ func (a *agent) controlHandler() http.Handler {
 	})
 	// 手足役がつなぎっぱなしにする窓口。next で仕事を待ち、result で結果を返す。
 	mux.HandleFunc("GET /control/helper/next", func(w http.ResponseWriter, r *http.Request) {
-		if j := a.hub.poll(); j != nil {
+		// 窓口の WriteTimeout(10 秒)は要求を読んだ時点から数えるので、30 秒保つこの
+		// つなぎでは、10 秒より後に来た仕事を書き出せずに失ってしまう。保つ長さに合わせる。
+		http.NewResponseController(w).SetWriteDeadline(time.Now().Add(a.hub.pollHold + 10*time.Second))
+		if j := a.hub.poll(r.Context()); j != nil {
 			body, _ := json.Marshal(j)
 			writeBody(w, http.StatusOK, body, "")
 			return

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -113,7 +114,7 @@ func TestRunViaHelperWhenLoggedIn(t *testing.T) {
 	// 手足役が取りに来る役をたてる
 	got := make(chan *helperJob, 1)
 	go func() {
-		j := ta.hub.poll()
+		j := ta.hub.poll(context.Background())
 		got <- j
 		if j != nil {
 			ta.hub.complete(j.ID, helperResult{})
