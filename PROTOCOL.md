@@ -40,8 +40,9 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
 
 - 誰でも呼べる(認証なし)
 - 本体はこれで「常駐アプリがいる」「組めるか」「次の要求の nonce」を知る
-- `session` は、いま誰かがログインしていて画面のいる操作も動かせるか。`false` のとき
-  (ログイン前など)は、`before_login` の操作しか動かせない(下の `login`・`needs_login`)
+- `session` は、いま誰かがログインしていて、操作がログイン中の画面で動くか。`false` のとき
+  (ログイン前など)は、操作は画面のないところで動き、`require_login` の操作は押せない
+  (下の `login`・`needs_login`)
 
 ### `POST /v1/pair`
 
@@ -75,7 +76,7 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
 - `confirm` は `kido.toml` の `confirm`。無ければ省く。空文字なら `""` を送る(本文なしの確認)
 - `broken` は設定が壊れていて押せない操作(実行できるファイルが無い・2つ以上ある・`kido.toml` が読めない)だけに `true` を付ける
 - `login` は「いまは押せない(ログインが要る)」印。誰もログインしていない(`session` が
-  `false`)ときに、`before_login` でない操作へ付ける。ログイン中は付けない
+  `false`)ときに、`require_login` の操作へ付ける。ログイン中は付けない
 - 並びはフォルダ名の昇順
 - 失敗
   - nonce が無い・失効・署名違い: 401 `{"ok":false,"error":"unauthorized"}`
@@ -116,6 +117,7 @@ Kido の本体(スマホからの操作を、同じ LAN の PC に取り次ぐ�
   - `icon`
   - `confirm`
   - `run`(実行するファイル名。フォルダの中だけ)
-  - `before_login`(bool、既定 false)。true の操作は、誰もログインしていないときも動かせる。
-    false の操作は、その間は一覧で `login` が付き、`run` すると `needs_login` になる
+  - `require_login`(bool、既定 false)。true の操作は、誰もログインしていないときは
+    一覧で `login` が付き、`run` すると `needs_login` になる。false(既定)の操作は、
+    ログインしていなければ画面のないところで動く(窓のあるアプリは見えない)
   - 知らないキーは `kido-agent check` で警告する(動作は止めない)
