@@ -32,9 +32,9 @@ curl -fsSL https://pc.kido.page/install.sh | sh
 3. `kido-agent pair` が動き、起動丸の本体が見つけに来るのを 10 分のあいだ待つ。起動ページにこの PC をまだ登録していなければ、そのあいだにスマホで登録する
 4. 操作フォルダ `~/KidoButtons` を開く
 
-### 公開前(リポジトリが非公開のあいだ)の入れ方
+### 手元のビルドから入れる
 
-リリースから落とせないので、手元に置いた zip・tar.gz を指定します。
+開発中の版を試すときは、手元に置いた zip・tar.gz を指定します。
 
 ```powershell
 # Windows(Windows PowerShell 5.1 は BOM の無い .ps1 を -File で読むと日本語が化けるので、UTF-8 と指定して読ませる)
@@ -166,6 +166,7 @@ git tag v0.1.0 && git push origin v0.1.0
 
 ### 案内のページ
 
-`site/` を GitHub Pages(`pc.kido.page`)に出します。出すときに `install/` の `install.ps1` `install.sh` を写すので、
-`https://pc.kido.page/install.ps1` が手順の本物と同じになります。
-リポジトリが非公開のあいだは、無料の契約では Pages を使えないため `pages.yml` は失敗します(公開後に通ります)。
+`site/` と入れ方のスクリプト、配る物(zip・tar.gz)を、まとめて Cloudflare Workers(`pc.kido.page`)に出します。
+出すのはタグを打ったリリースのときで、`release.yml` が GitHub のリリースと同じ物を載せます(secret の `CLOUDFLARE_API_TOKEN`・`CLOUDFLARE_ACCOUNT_ID` が要る)。
+入れ方のスクリプトは `install/` のものを写し、中の `https://pc.kido.page` を出し先の URL に書き換えます。
+手元から出すときは `sh ci/build-dist.sh <版>` のあと `sh ci/deploy-site.sh [ドメイン 名前]`(wrangler のログインが要る)。

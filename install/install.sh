@@ -39,10 +39,10 @@ detect() {
 fetch() {
 	src="${KIDO_AGENT_TARBALL:-}"
 	if [ -z "$src" ]; then
-		url="https://kido-agent/releases/latest/download/kido-agent-$os-$arch.tar.gz"
+		url="https://pc.kido.page/dl/kido-agent-$os-$arch.tar.gz"
 		say "ダウンロードしています: $url"
 		curl -fsSL "$url" -o "$work/pkg.tar.gz" ||
-			die "ダウンロードできませんでした。公開前は KIDO_AGENT_TARBALL に手元の tar.gz を指定してください"
+			die "ダウンロードできませんでした"
 		src="$work/pkg.tar.gz"
 	fi
 	mkdir "$work/pkg"

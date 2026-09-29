@@ -39,15 +39,15 @@ function Get-Arch {
     throw '32 ビット版の Windows には対応していません'
 }
 
-# Get-Package は入手元(GitHub のリリースか、手元の zip・フォルダ)から exe のあるフォルダを返す。
+# Get-Package は入手元(配布のページか、手元の zip・フォルダ)から exe のあるフォルダを返す。
 function Get-Package([string]$Work) {
     $src = $From
     if (-not $src) {
-        $url = "https://kido-agent/releases/latest/download/kido-agent-windows-$(Get-Arch).zip"
+        $url = "https://pc.kido.page/dl/kido-agent-windows-$(Get-Arch).zip"
         Write-Host "ダウンロードしています: $url"
         $src = Join-Path $Work 'kido-agent.zip'
         try { Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $src }
-        catch { throw "ダウンロードできませんでした($($_.Exception.Message))。公開前は `$env:KIDO_AGENT_ZIP に手元の zip を指定してください" }
+        catch { throw "ダウンロードできませんでした($($_.Exception.Message))" }
     }
     if (-not (Test-Path -LiteralPath $src -PathType Container)) {
         $out = Join-Path $Work 'unzipped'

@@ -10,34 +10,28 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # 手順の if から secrets は直接見えないので、有無だけ env に写す
+      HAS_CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - run: go test ./...
-      - name: windows
-        shell: pwsh
-        run: |
-          foreach ($arch in 'amd64', 'arm64') {
-            ./ci/package-windows.ps1 -Version $env:GITHUB_REF_NAME -Arch $arch -Out dist
-          }
-      - name: mac / linux
-        env:
-          CGO_ENABLED: "0"
-        run: |
-          for t in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
-            os=${t%/*}; arch=${t#*/}; stage=dist/$os-$arch
-            mkdir -p "$stage"
-            GOOS=$os GOARCH=$arch go build -trimpath \
-              -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o "$stage/kido-agent" ./cmd/kido-agent
-            tar -czf "dist/kido-agent-$os-$arch.tar.gz" -C "$stage" kido-agent
-          done
-      - name: checksums
-        run: cd dist && sha256sum *.zip *.tar.gz > SHA256SUMS && cat SHA256SUMS
+      # Windows の zip は pwsh の Compress-Archive で作る(ubuntu の runner に入っている)
+      - run: sh ci/build-dist.sh "$GITHUB_REF_NAME"
       - name: publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes \
             dist/*.zip dist/*.tar.gz dist/SHA256SUMS
+      # 配布のページにも同じ物を載せる。トークンが無い間(手元から出している間)は飛ばす。
+      # 出し先を変えるときは、リポジトリの変数 KIDO_SITE_DOMAIN・KIDO_SITE_NAME を設定する
+      - name: deploy site
+        if: env.HAS_CF_TOKEN == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: sh ci/deploy-site.sh "${{ vars.KIDO_SITE_DOMAIN || 'pc.kido.page' }}" "${{ vars.KIDO_SITE_NAME || 'kido-agent-site' }}"

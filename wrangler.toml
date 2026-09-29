@@ -1,0 +1,9 @@
+# 配布のページ(pc.kido.page)。静的ファイルだけの Worker で、中身は ci/deploy-site.sh が .site/ に作る。
+# 出し先のドメインは deploy の引数で渡す(試験用の出し先をリポジトリに書かないため)。
+name = "kido-agent-site"
+compatibility_date = "2026-09-01"
+# 出し先はカスタムドメインの 1 つだけにする(*.workers.dev の別の入口を作らない)
+workers_dev = false
+
+[assets]
+directory = "./.site"
