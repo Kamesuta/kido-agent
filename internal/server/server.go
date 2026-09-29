@@ -3,6 +3,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
@@ -64,13 +65,18 @@ func (a *agent) sessionActive() bool { return a.hub.active() || a.osSession() }
 func (a *agent) helperActive() bool { return a.hub.active() }
 
 // execute は操作を動かす。手足役がいればそちらへ流し(ログイン中の見た目・窓で動く)、
-// いなければ待ち受け役が自分で画面なしに動かす(require_login でない操作だけここに来る)。
+// いなければ待ち受け役が自分で画面なしに動かす。
 func (a *agent) execute(t actions.Action, viaHelper bool) {
 	if viaHelper {
-		if _, err := a.hub.dispatch(context.Background(), t.ID, t.RequireLogin, false); err != nil {
-			a.logf("手足役での実行に失敗しました: %s: %v", t.ID, err)
+		_, err := a.hub.dispatch(context.Background(), t.ID, t.RequireLogin, false)
+		if err == nil {
+			return
 		}
-		return
+		if !a.canFallback(t, err) {
+			a.logf("手足役での実行に失敗しました: %s: %v", t.ID, err)
+			return
+		}
+		a.logf("手足役に渡せなかったので自分で動かします: %s", t.ID)
 	}
 	if err := a.launch(t); err != nil {
 		a.logf("実行に失敗しました: %s: %v", t.ID, err)
@@ -81,7 +87,22 @@ func (a *agent) execute(t actions.Action, viaHelper bool) {
 // ctx は手足役に流したときだけ効く(自分で動かした子は、相手が去っても最後まで待って回収する)。
 func (a *agent) executeWait(ctx context.Context, t actions.Action, viaHelper bool) (int, error) {
 	if viaHelper {
-		return a.hub.dispatch(ctx, t.ID, t.RequireLogin, true)
+		code, err := a.hub.dispatch(ctx, t.ID, t.RequireLogin, true)
+		if err == nil || !a.canFallback(t, err) {
+			return code, err
+		}
+		a.logf("手足役に渡せなかったので自分で動かします: %s", t.ID)
 	}
 	return a.launchWait(t)
+}
+
+// canFallback は、手足役に渡せなかった操作を待ち受け役が自分で動かしてよいか。
+// ログアウトの直後は、手足役が来なくなっても sessionGrace(90 秒)の間は
+// 「いる」とみなすので、その間に押した操作が誰にも拾われずに消えていた。
+// 手足役が拾わなかった(errNoHelper)ときだけ代わりに動かす。拾った後の失敗まで
+// 動かし直すと二重に動く。require_login の操作は画面のないところで動かすと
+// 見えないので断ったままにする。ただし OS の決まりでログイン中(Mac・Linux)なら、
+// 手足役がいないときと同じく待ち受け役が動かしてよい。
+func (a *agent) canFallback(t actions.Action, err error) bool {
+	return errors.Is(err, errNoHelper) && (!t.RequireLogin || a.osSession())
 }
