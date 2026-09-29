@@ -117,7 +117,9 @@ func runElevated(script string, args ...string) (output string, err error) {
 		return "", e
 	}
 	tmp := filepath.Join(os.TempDir(), "kido-"+script)
-	if e := os.WriteFile(tmp, data, 0o600); e != nil {
+	// UTF-8 の BOM を付ける。Windows PowerShell 5.1 は BOM の無い .ps1 を -File で
+	// ANSI として読み、日本語のコメントや文字列を壊して構文エラーになるため。
+	if e := os.WriteFile(tmp, append([]byte{0xEF, 0xBB, 0xBF}, data...), 0o600); e != nil {
 		return "", e
 	}
 	defer os.Remove(tmp)
